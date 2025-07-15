@@ -6,6 +6,7 @@ export async function transcribeAudio(audioBlob) {
 
   const formData = new FormData();
   formData.append('file', audioBlob, 'audio.webm');
+  formData.append('model', 'whisper-1');  // ← ensure the model is specified
 
   try {
     const response = await fetch('/api/transcribe', {
