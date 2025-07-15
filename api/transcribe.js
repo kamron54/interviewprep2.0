@@ -1,5 +1,8 @@
 // api/transcribe.js
 export default async function handler(req, res) {
+  // DEBUG: check if Vercel injected the key
+  console.log('🔐 OPENAI_API_KEY defined?', !!process.env.OPENAI_API_KEY);
+
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).end('Method Not Allowed');
