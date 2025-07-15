@@ -1,35 +1,47 @@
 // api/transcribe.js
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    res.statusCode = 405;
     res.setHeader('Allow', 'POST');
-    return res.end('Method Not Allowed');
+    return res.status(405).end('Method Not Allowed');
   }
 
   try {
-    // Forward the multipart/form-data request body directly to OpenAI
+    // 1. Collect the raw request body into a single Buffer
+    const chunks = [];
+    for await (const chunk of req) {
+      chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+    }
+    const bodyBuffer = Buffer.concat(chunks);
+
+    // 2. Proxy to OpenAI, preserving content‑type
     const openaiRes = await fetch(
       'https://api.openai.com/v1/audio/transcriptions',
       {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-          'Content-Type': req.headers['content-type'],
+          'Content-Type': req.headers['content-type'] || 'multipart/form-data',
         },
-        body: req, // stream the raw request
+        body: bodyBuffer,
       }
     );
 
-    // Stream back OpenAI’s response
-    const buffer = await openaiRes.arrayBuffer();
-    res.statusCode = openaiRes.status;
-    res.setHeader('Content-Type', openaiRes.headers.get('content-type') || 'application/json');
-    res.end(Buffer.from(buffer));
+    // 3. Read back as text and try to parse JSON
+    const text = await openaiRes.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (parseErr) {
+      console.error('🛑 Whisper API returned non-JSON:', text);
+      return res
+        .status(500)
+        .json({ error: 'Unexpected response from Whisper API' });
+    }
+
+    // 4. Forward status + parsed JSON
+    res.status(openaiRes.status).json(data);
   } catch (err) {
     console.error('🛑 Whisper proxy error:', err);
-    res.statusCode = 500;
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ error: 'Internal server error' }));
+    res.status(500).json({ error: 'Internal server error' });
   }
 }
