@@ -192,7 +192,7 @@ function InterviewSession() {
       setCount(5);
       setIsCountingDown(true);
     } else {
-      navigate('/summary', { state: { recordings } });
+      navigate('/summary', { state: { recordings, profession: config.profession } });
     }
   };
 
