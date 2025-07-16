@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getMediaStream } from '../mediaStore';
-import { db } from '../firebase';
+import { db } from '../../firebase';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import Button from '../components/Button';
 

@@ -1,7 +1,7 @@
 // AdminQuestionManager.jsx
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { db } from '../firebase';
+import { db } from '../../firebase';
 import {
   collection,
   getDocs,
