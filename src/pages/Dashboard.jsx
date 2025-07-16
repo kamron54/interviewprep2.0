@@ -112,10 +112,7 @@ export default function Dashboard() {
             </div>
             <Button
               type="primary"
-              // ensure blue after trial ends, and primary by default
-              className={`mt-4 md:mt-0 md:ml-4 ${
-                !isTrialActive ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''
-              }`}
+              className="mt-4 md:mt-0 md:ml-4"
               onClick={handleUpgrade}
             >
               {isTrialActive ? 'Upgrade Early & Save' : 'Upgrade to Continue'}
@@ -129,7 +126,6 @@ export default function Dashboard() {
         <h1 className="text-3xl font-bold text-gray-900">
           Welcome back, {userData.email}
         </h1>
-        {/* Status line removed */}
 
         <div className="mt-6 flex flex-col sm:flex-row sm:space-x-4 space-y-4 sm:space-y-0">
           {(isTrialActive || userData.hasPaid) && (
