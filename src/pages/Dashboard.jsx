@@ -39,10 +39,23 @@ export default function Dashboard() {
     return () => unsubscribe();
   }, [navigate]);
 
-  // Redirect to Stripe Checkout
+  // ✅ Redirect to Stripe Checkout with UID
   const handleUpgrade = async () => {
     try {
-      const res = await fetch('/api/create-checkout-session', { method: 'POST' });
+      const uid = auth.currentUser?.uid;
+      if (!uid) throw new Error('User not authenticated');
+
+      const res = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid }),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Server error: ${text}`);
+      }
+
       const { url } = await res.json();
       window.location.href = url;
     } catch (err) {

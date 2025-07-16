@@ -1,4 +1,3 @@
-// pages/api/create-checkout-session.js
 import Stripe from 'stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -9,26 +8,31 @@ export default async function handler(req, res) {
   }
 
   try {
-    // You can pull authenticated user info here if needed
+    const { uid } = req.body;
+
+    if (!uid) {
+      return res.status(400).json({ error: 'Missing user UID' });
+    }
+
     const session = await stripe.checkout.sessions.create({
-      mode: 'payment', // or 'subscription' if using recurring billing
+      mode: 'payment',
       payment_method_types: ['card'],
       line_items: [
         {
-          price: 'price_1RlNb5HJuEuytDk1mwf1e1hh', // Replace this with your actual Stripe Price ID
+          price: 'price_1RlNb5HJuEuytDk1mwf1e1hh', // your actual Price ID
           quantity: 1,
         },
       ],
       success_url: `${req.headers.origin}/success`,
       cancel_url: `${req.headers.origin}/cancel`,
       metadata: {
-        // optional: store user ID or email
+        firebaseUid: uid,
       },
     });
 
-    res.status(200).json({ url: session.url });
+    return res.status(200).json({ url: session.url });
   } catch (err) {
-    console.error('Stripe session error:', err);
-    res.status(500).json({ error: 'Something went wrong creating the session' });
+    console.error('❌ Stripe session error:', err);
+    return res.status(500).json({ error: 'Something went wrong creating the session' });
   }
 }
