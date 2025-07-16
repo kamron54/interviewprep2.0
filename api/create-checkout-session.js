@@ -23,8 +23,8 @@ export default async function handler(req, res) {
           quantity: 1,
         },
       ],
-      success_url: `${req.headers.origin}/success`,
-      cancel_url: `${req.headers.origin}/cancel`,
+      success_url: `${req.headers.origin}/dashboard`,
+      cancel_url: `${req.headers.origin}/dashboard`,
       metadata: {
         firebaseUid: uid,
       },
