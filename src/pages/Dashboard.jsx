@@ -110,13 +110,11 @@ export default function Dashboard() {
                 Upgrade now for full, uninterrupted access to mock interviews and AI feedback.
               </p>
             </div>
-            <Button
-              type="primary"
-              className="mt-4 md:mt-0 md:ml-4"
-              onClick={handleUpgrade}
-            >
-              {isTrialActive ? 'Upgrade Early & Save' : 'Upgrade to Continue'}
-            </Button>
+            <div className="mt-4 md:mt-0 md:ml-4">
+              <Button type="primary" onClick={handleUpgrade}>
+                {isTrialActive ? 'Upgrade Early & Save' : 'Upgrade to Continue'}
+              </Button>
+            </div>
           </div>
         </Card>
       )}
