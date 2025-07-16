@@ -20,7 +20,9 @@ export default function Dashboard() {
         return;
       }
       if (!user.emailVerified) {
-        setErrorMessage('Please verify your email before continuing. Check your inbox for a verification link.');
+        setErrorMessage(
+          'Please verify your email before continuing. Check your inbox for a verification link.'
+        );
         return;
       }
       try {
@@ -35,11 +37,10 @@ export default function Dashboard() {
         setErrorMessage('Failed to fetch user data.');
       }
     });
-
     return () => unsubscribe();
   }, [navigate]);
 
-  // ✅ Redirect to Stripe Checkout with UID
+  // Redirect to Stripe Checkout with UID
   const handleUpgrade = async () => {
     try {
       const uid = auth.currentUser?.uid;
@@ -95,7 +96,7 @@ export default function Dashboard() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-12 space-y-8">
 
-      {/* Always-on Upgrade Banner for non-paying users */}
+      {/* Always‑on Upgrade Banner for non‑paying users */}
       {!userData.hasPaid && (
         <Card className="bg-gray-50 border border-gray-200 p-6 mb-6">
           <div className="flex flex-col md:flex-row md:items-center">
@@ -105,13 +106,16 @@ export default function Dashboard() {
                   ? `Your free trial ends in ${hoursLeft}h ${minutesLeft}m`
                   : `Your trial has ended`}
               </h2>
-              <p className="text-gray-600">
+              <p className="text-gray-600 mb-0">
                 Upgrade now for full, uninterrupted access to mock interviews and AI feedback.
               </p>
             </div>
             <Button
               type="primary"
-              className="mt-4 md:mt-0 md:ml-4"
+              // ensure blue after trial ends, and primary by default
+              className={`mt-4 md:mt-0 md:ml-4 ${
+                !isTrialActive ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''
+              }`}
               onClick={handleUpgrade}
             >
               {isTrialActive ? 'Upgrade Early & Save' : 'Upgrade to Continue'}
@@ -125,23 +129,14 @@ export default function Dashboard() {
         <h1 className="text-3xl font-bold text-gray-900">
           Welcome back, {userData.email}
         </h1>
-        <p className="mt-2 text-gray-600">
-          {userData.hasPaid
-            ? 'You have full access.'
-            : isTrialActive
-              ? `Your free trial ends on ${new Date(userData.trialExpiresAt).toLocaleString()} (${hoursLeft}h ${minutesLeft}m left)`
-              : 'Your trial has ended.'}
-        </p>
+        {/* Status line removed */}
 
         <div className="mt-6 flex flex-col sm:flex-row sm:space-x-4 space-y-4 sm:space-y-0">
-          {!userData.hasPaid && (
-            <Button type="primary" onClick={handleUpgrade}>
-              {isTrialActive ? 'Upgrade Early & Save' : 'Upgrade to Continue'}
+          {(isTrialActive || userData.hasPaid) && (
+            <Button type="primary" onClick={() => navigate('/setup')}>
+              Start New Interview
             </Button>
           )}
-          <Button type="primary" onClick={() => navigate('/setup')}>
-            Start New Interview
-          </Button>
         </div>
       </Card>
 
