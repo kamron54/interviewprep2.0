@@ -11,6 +11,7 @@
     "axios": "^1.10.0",
     "file-saver": "^2.0.5",
     "firebase": "^11.10.0",
+    "firebase-admin": "^13.4.0",
     "jszip": "^3.10.1",
     "raw-body": "^3.0.0",
     "react": "^18.2.0",
