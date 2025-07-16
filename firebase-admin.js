@@ -1,3 +1,4 @@
+// firebase-admin.js
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 
@@ -11,6 +12,4 @@ if (!getApps().length) {
   });
 }
 
-const db = getFirestore();
-
-export { db };
+export const dbAdmin = getFirestore();
