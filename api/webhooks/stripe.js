@@ -1,6 +1,6 @@
 import Stripe from 'stripe';
 import getRawBody from 'raw-body';
-import { db } from '../../firebase'; // adjust if your Firebase file is in a different folder
+import { db } from '../src/firebase'; // adjust if your Firebase file is in a different folder
 import { doc, setDoc } from 'firebase/firestore';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
