@@ -107,12 +107,12 @@ export default function Dashboard() {
                   : `Your trial has ended`}
               </h2>
               <p className="text-gray-600 mb-0">
-                Upgrade now for full, uninterrupted access to mock interviews and AI feedback.
+                Upgrade now for unlimited access to mock interviews and feedback.
               </p>
             </div>
             <div className="mt-4 md:mt-0 md:ml-4">
               <Button type="primary" onClick={handleUpgrade}>
-                {isTrialActive ? 'Upgrade Early & Save' : 'Upgrade to Continue'}
+                {isTrialActive ? 'Upgrade Now' : 'Upgrade to Continue'}
               </Button>
             </div>
           </div>
