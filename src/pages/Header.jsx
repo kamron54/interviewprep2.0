@@ -3,15 +3,31 @@ import { useEffect, useState } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from '../../firebase';
 import Button from '../components/Button';
+import { getFirestore, doc, getDoc } from 'firebase/firestore';
 
 export default function Header() {
   const [user, setUser] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, setUser);
-    return () => unsubscribe();
-  }, []);
+  const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    setUser(currentUser);
+
+    if (currentUser) {
+      const db = getFirestore();
+      const userRef = doc(db, 'users', currentUser.uid);
+      const userSnap = await getDoc(userRef);
+      const userData = userSnap.exists() ? userSnap.data() : {};
+      setIsAdmin(userData?.role === 'admin');
+    } else {
+      setIsAdmin(false);
+    }
+  });
+
+  return () => unsubscribe();
+}, []);
+
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -35,6 +51,7 @@ export default function Header() {
         ) : (
           <>
             <Link to="/dashboard">Dashboard</Link>
+            {isAdmin && <Link to="/admin-dashboard" className="text-red-600 font-semibold">Admin Dashboard</Link>}
             <Button type="danger" onClick={handleLogout}>Logout</Button>
           </>
         )}

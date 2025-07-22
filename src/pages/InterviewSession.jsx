@@ -162,10 +162,13 @@ function InterviewSession() {
       const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
       const videoUrl = URL.createObjectURL(videoBlob);
 
+      const currentQuestion = questions[questionIndex];
+
       setRecordings((prev) => [
         ...prev,
         {
           question: questions[questionIndex].text,
+          tip: currentQuestion.tip || '',
           videoBlob,
           videoUrl,
           audioBlob,

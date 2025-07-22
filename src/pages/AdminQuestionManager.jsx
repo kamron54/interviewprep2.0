@@ -11,7 +11,7 @@ import {
   updateDoc,
 } from 'firebase/firestore';
 
-const MAIN_TAGS = ['Dental', 'Medical', 'Physical Therapy'];
+const MAIN_TAGS = ['Dental', 'Medical', 'Physical Therapy', 'Physician Assistant', 'Pharmacy', 'Occupational Therapy', 'Veterinary Medicine'];
 const SUBTAGS = ['Ethical', 'Behavioral', 'Teamwork', 'Leadership', 'Communication'];
 
 function AdminQuestionManager() {
@@ -20,6 +20,7 @@ function AdminQuestionManager() {
   const [selectedTags, setSelectedTags] = useState([]);
   const [subtag, setSubtag] = useState('');
   const [big3, setBig3] = useState(false);
+  const [tip, setTip] = useState('');
   const [error, setError] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
@@ -58,7 +59,7 @@ function AdminQuestionManager() {
     e.preventDefault();
     setError('');
 
-    if (!text.trim() || !subtag || selectedTags.length === 0) {
+    if (!text.trim() || selectedTags.length === 0) {
       setError('Please complete all fields.');
       return;
     }
@@ -66,6 +67,7 @@ function AdminQuestionManager() {
     const newQuestion = {
       text: text.trim(),
       subtag,
+      tip: tip.trim(),
       big3,
       mainTags: selectedTags,
       createdAt: new Date(),
@@ -78,6 +80,7 @@ function AdminQuestionManager() {
       setSelectedTags([]);
       setSubtag('');
       setBig3(false);
+      setTip('');
     } catch (err) {
       setError('Failed to add question.');
       console.error(err);
@@ -100,6 +103,7 @@ function AdminQuestionManager() {
       subtag: q.subtag,
       mainTags: q.mainTags || [],
       big3: q.big3 || false,
+      tip: q.tip || '',
     });
   };
 
@@ -109,7 +113,7 @@ function AdminQuestionManager() {
   };
 
   const saveEdit = async (id) => {
-    if (!editForm.text.trim() || !editForm.subtag || editForm.mainTags.length === 0) {
+    if (!editForm.text.trim() || editForm.mainTags.length === 0) {
       alert('All fields required');
       return;
     }
@@ -189,6 +193,17 @@ function AdminQuestionManager() {
           <label>Include as “Big 3” question</label>
         </div>
 
+        <div>
+  <label className="block font-medium mb-1">Tip (optional)</label>
+  <input
+    type="text"
+    value={tip}
+    onChange={(e) => setTip(e.target.value)}
+    className="w-full border p-2 rounded"
+    placeholder="e.g., Tie your answer to a healthcare scenario"
+  />
+</div>
+
         {error && <p className="text-red-600">{error}</p>}
 
         <button
@@ -255,6 +270,17 @@ function AdminQuestionManager() {
                       Big 3
                     </label>
 
+                    <input
+                      type="text"
+                      value={editForm.tip}
+                      onChange={(e) =>
+                        setEditForm((f) => ({ ...f, tip: e.target.value }))
+                      }
+                      className="w-full border p-2 rounded"
+                      placeholder="Tip (optional)"
+                    />
+
+
                     <div className="flex gap-2">
                       <button
                         className="bg-green-600 text-white px-3 py-1 rounded"
@@ -275,7 +301,11 @@ function AdminQuestionManager() {
                     <div>
                       <p className="font-medium">{q.text}</p>
                       <p className="text-sm text-gray-500">
-                        Tags: {q.mainTags?.join(', ')} | Subtag: {q.subtag} | Big3: {q.big3 ? 'Yes' : 'No'}
+                        Tags:{' '}
+                        {q.mainTags?.length === MAIN_TAGS.length
+                          ? 'All'
+                         : q.mainTags?.join(', ')}{' '}
+                        | Subtag: {q.subtag || 'None'} | Big3: {q.big3 ? 'Yes' : 'No'}
                       </p>
                     </div>
                     <div className="flex flex-col gap-1 items-end">

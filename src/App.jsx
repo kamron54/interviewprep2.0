@@ -66,6 +66,7 @@ function App() {
           path="admin"
           element={user ? <AdminDashboard /> : <Navigate to="/" />}
         />
+        <Route path="admin-dashboard" element={<AdminDashboard />} />
         <Route
           path="admin/questions"
           element={user ? <AdminQuestionManager /> : <Navigate to="/" />}

@@ -11,7 +11,7 @@ const hallucinatedPhrases = [
   "like and subscribe",
   "I'm still here. I'm still here. I'm still here.",
   "Shh.",
-  "Thank you so much for watching.",
+  "Thank you so much for watching",
   "follow me on",
 ];
 
@@ -102,6 +102,9 @@ all.push({ ...item, transcript: finalTranscript, feedback });
           >
             <p className="font-medium text-gray-800">Question {idx + 1}:</p>
             <p className="text-lg text-gray-900">{item.question}</p>
+            {item.tip && (
+              <p className="text-sm text-blue-700 italic mt-1">Tip: {item.tip}</p>
+            )}
 
             {item.skipped ? (
               <p className="italic text-gray-500">Skipped</p>
