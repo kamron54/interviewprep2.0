@@ -34,7 +34,11 @@ function InterviewSetup() {
           >
             <option value="Dental">Dental</option>
             <option value="Medical">Medical</option>
-            <option value="PT">PT</option>
+            <option value="Physical Therapy">Physical Therapy</option>
+            <option value="Physician Assistant">Physician Assistant</option>
+            <option value="Pharmacy">Pharmacy</option>
+            <option value="Occupational Therapy">Occupational Therapy</option>
+            <option value="Veterinary Medicine">Veterinary Medicine</option>
           </select>
         </div>
 
@@ -52,13 +56,29 @@ function InterviewSetup() {
         </div>
 
         {/* Include Big 3 */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center space-x-2">
           <input
             type="checkbox"
             checked={big3}
             onChange={(e) => setBig3(e.target.checked)}
           />
-          <label className="text-sm text-gray-800">Include “Big 3” questions?</label>
+          <span className="flex items-center space-x-1 text-sm text-gray-800">
+            <span>Include “Big 3” questions?</span>
+            <div className="relative flex items-center">
+              <span
+                className="text-blue-500 cursor-pointer peer"
+                tabIndex={0}
+              >
+                ℹ️
+              </span>
+              <div
+                className="absolute left-6 top-0 w-64 p-2 bg-white border border-gray-300 rounded shadow-lg text-sm text-gray-700 opacity-0 peer-hover:opacity-100 peer-focus:opacity-100 transition-opacity z-10 pointer-events-none"
+              >
+                The "Big 3" are the three interview questions that are guaranteed to show up in every interview: Tell me about yourself, Why this profession, and Why our school.
+              </div>
+            </div>
+
+          </span>
         </div>
 
         {/* Question Count */}
