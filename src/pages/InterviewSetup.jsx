@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getDocs, collection } from 'firebase/firestore';
+import { db } from '../../firebase';
 
 function InterviewSetup() {
   const [profession, setProfession] = useState('Dental');
@@ -7,17 +9,42 @@ function InterviewSetup() {
   const [big3, setBig3] = useState(true);
   const [questionCount, setQuestionCount] = useState(5);
   const navigate = useNavigate();
+  const [customQuestions, setCustomQuestions] = useState([]);
+  const [customInput, setCustomInput] = useState('');
+  const [questionBank, setQuestionBank] = useState([]);
+
 
   const handleStart = () => {
-    const config = {
-      profession,
-      mode,
-      big3,
-      questionCount,
-    };
-
-    navigate('/prep', { state: config });
+  const config = {
+    profession,
+    mode,
+    big3,
+    questionCount,
   };
+
+  // If user selected "Custom", override the config
+  if (profession === "Custom") {
+    config.questions = customQuestions; // The user's hand-picked or typed questions
+    config.big3 = false; // No need for big 3 logic
+    config.questionCount = customQuestions.length;
+    config.isCustom = true; // Optional, in case you want to check for it later
+  }
+
+  navigate("/prep", { state: config });
+};
+
+useEffect(() => {
+  const fetchQuestions = async () => {
+    const snapshot = await getDocs(collection(db, 'questions'));
+    const all = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    setQuestionBank(all);
+  };
+
+  fetchQuestions();
+}, []);
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-12 space-y-8">
@@ -39,6 +66,7 @@ function InterviewSetup() {
             <option value="Pharmacy">Pharmacy</option>
             <option value="Occupational Therapy">Occupational Therapy</option>
             <option value="Veterinary Medicine">Veterinary Medicine</option>
+            <option value="Custom">Custom</option>
           </select>
         </div>
 
@@ -55,6 +83,8 @@ function InterviewSetup() {
           </select>
         </div>
 
+    {profession !== 'Custom' && (
+      <>
         {/* Include Big 3 */}
         <div className="flex items-center space-x-2">
           <input
@@ -93,6 +123,81 @@ function InterviewSetup() {
             className="w-full p-2 border rounded-lg"
           />
         </div>
+      </>
+    )}
+
+        {/* Costum Builder */}
+        {profession === 'Custom' && (
+          <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
+            <p className="text-sm font-semibold text-gray-700">Custom Interview Builder</p>
+
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={customInput}
+                onChange={(e) => setCustomInput(e.target.value)}
+                placeholder="Type a custom question..."
+                className="flex-1 p-2 border border-gray-300 rounded"
+              />
+              <button
+                onClick={() => {
+                  if (customInput.trim()) {
+                    setCustomQuestions([...customQuestions, { text: customInput.trim() }]);
+                    setCustomInput('');
+                  }
+                }}
+                className="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700"
+              >
+                Add
+              </button>
+            </div>
+
+            {customQuestions.length > 0 && (
+              <div className="mt-2 space-y-1">
+                <p className="text-sm font-medium text-gray-600">Questions:</p>
+                <ul className="list-disc list-inside text-sm text-gray-800 space-y-1">
+                  {customQuestions.map((q, index) => (
+                    <li key={index} className="flex justify-between items-center">
+                      {q.text}
+                      <button
+                        onClick={() => {
+                          const updated = [...customQuestions];
+                          updated.splice(index, 1);
+                          setCustomQuestions(updated);
+                        }}
+                        className="text-red-500 text-xs hover:underline"
+                      >
+                        Remove
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div className="mt-6">
+              <p className="text-sm font-semibold text-gray-700 mb-2">Browse Question Bank</p>
+
+              <div className="max-h-64 overflow-y-auto border rounded-lg p-2 space-y-2 bg-white">
+                {questionBank.map((q) => (
+                  <div key={q.id} className="flex justify-between items-center border-b pb-2">
+                    <span className="text-sm text-gray-800">{q.text}</span>
+                    <button
+                      onClick={() => {
+                        if (!customQuestions.some((item) => item.text === q.text)) {
+                          setCustomQuestions([...customQuestions, { text: q.text }]);
+                        }
+                      }}
+                      className="text-blue-600 text-xs hover:underline"
+                    >
+                      Add
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Start Button */}
         <div>

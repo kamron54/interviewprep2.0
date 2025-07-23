@@ -74,38 +74,44 @@ function InterviewSession() {
   }, [stream]);
 
   useEffect(() => {
-   const fetchQuestions = async () => {
-  const snapshot = await getDocs(
-    query(collection(db, 'questions'), where('mainTags', 'array-contains', config.profession))
-  );
-
-  const all = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-  let big3Questions = [];
-
-  if (config.big3) {
-    big3Questions = all
-      .filter(q => q.big3 === true)
-      .sort((a, b) => (a.big3Order || 0) - (b.big3Order || 0));
+  // ✅ Use custom questions if provided (Custom Mode)
+  if (config.questions && Array.isArray(config.questions)) {
+    setQuestions(config.questions);
+    return;
   }
 
-  // ✅ Filter remaining questions based on whether Big 3 are included or not
-  const big3Ids = new Set(big3Questions.map(q => q.id));
-  const remaining = all.filter(q =>
-    config.big3 ? !big3Ids.has(q.id) : !q.big3
-  );
+  const fetchQuestions = async () => {
+    const snapshot = await getDocs(
+      query(collection(db, 'questions'), where('mainTags', 'array-contains', config.profession))
+    );
 
-  const numAllowed = Math.max(config.questionCount - big3Questions.length, 0);
-  const shuffled = [...remaining].sort(() => 0.5 - Math.random());
-  const selected = shuffled.slice(0, numAllowed);
+    const all = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-  const totalQuestions = [...big3Questions, ...selected].slice(0, config.questionCount);
+    let big3Questions = [];
 
-  setQuestions(totalQuestions);
-};
+    if (config.big3) {
+      big3Questions = all
+        .filter(q => q.big3 === true)
+        .sort((a, b) => (a.big3Order || 0) - (b.big3Order || 0));
+    }
 
-    fetchQuestions();
-  }, [config]);
+    const big3Ids = new Set(big3Questions.map(q => q.id));
+    const remaining = all.filter(q =>
+      config.big3 ? !big3Ids.has(q.id) : !q.big3
+    );
+
+    const numAllowed = Math.max(config.questionCount - big3Questions.length, 0);
+    const shuffled = [...remaining].sort(() => 0.5 - Math.random());
+    const selected = shuffled.slice(0, numAllowed);
+
+    const totalQuestions = [...big3Questions, ...selected].slice(0, config.questionCount);
+
+    setQuestions(totalQuestions);
+  };
+
+  fetchQuestions();
+}, [config]);
+
 
   const startRecording = () => {
     if (!stream) {
