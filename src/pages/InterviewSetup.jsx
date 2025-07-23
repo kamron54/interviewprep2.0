@@ -66,10 +66,10 @@ function InterviewSetup() {
             <span>Include “Big 3” questions?</span>
             <div className="relative flex items-center">
               <span
-                className="text-blue-500 cursor-pointer peer"
+                className="text-black-500 cursor-pointer peer"
                 tabIndex={0}
               >
-                ℹ️
+                ⓘ
               </span>
               <div
                 className="absolute left-6 top-0 w-64 p-2 bg-white border border-gray-300 rounded shadow-lg text-sm text-gray-700 opacity-0 peer-hover:opacity-100 peer-focus:opacity-100 transition-opacity z-10 pointer-events-none"
