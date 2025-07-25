@@ -26,6 +26,10 @@ function InterviewSession() {
   const audioChunksRef = useRef([]);
   const videoRef = useRef(null); // ✅ for reliable preview
 
+  const [timeLimitReached, setTimeLimitReached] = useState(false);
+  const recordingTimerRef = useRef(null);
+
+
   useEffect(() => {
     if (isCountingDown && count > 0) {
       const timer = setTimeout(() => setCount(c => c - 1), 1000);
@@ -119,6 +123,11 @@ function InterviewSession() {
       return;
     }
 
+    if (recordingTimerRef.current) {
+      clearTimeout(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+
     videoChunksRef.current = [];
     const videoRecorder = new MediaRecorder(stream);
     videoRecorder.ondataavailable = (e) => {
@@ -126,10 +135,6 @@ function InterviewSession() {
     };
     videoRecorderRef.current = videoRecorder;
     videoRecorder.start();
-
-    setTimeout(() => {
-      if (videoRecorder.state === 'recording') videoRecorder.stop();
-    }, 5 * 60 * 1000);
 
     const audioTracks = stream.getAudioTracks();
     const audioStream = new MediaStream(audioTracks);
@@ -141,9 +146,11 @@ function InterviewSession() {
     audioRecorderRef.current = audioRecorder;
     audioRecorder.start();
 
-    setTimeout(() => {
-      if (audioRecorder.state === 'recording') audioRecorder.stop();
-    }, 5 * 60 * 1000);
+    // ⏱ Auto-stop recording after 3 minutes
+    recordingTimerRef.current = setTimeout(() => {
+      setTimeLimitReached(true);
+      stopRecording(); // Triggers the full save + transition logic
+    }, 3 * 60 * 1000); // 3 minutes
 
     setIsRecording(true);
   };
@@ -196,6 +203,7 @@ function InterviewSession() {
   };
 
   const handleNext = () => {
+    setTimeLimitReached(false); // 🔁 clear the message
     if (questionIndex + 1 < questions.length) {
       setQuestionIndex((i) => i + 1);
       setCount(5);
@@ -257,6 +265,12 @@ function InterviewSession() {
       {isCountingDown && (
         <p className="text-orange-600 text-lg font-bold text-center">
           Recording starts in: {count}
+        </p>
+      )}
+
+      {timeLimitReached && (
+        <p className="text-sm text-red-600 text-center">
+          You reached the 3-minute time limit. Your response was automatically saved.
         </p>
       )}
 
