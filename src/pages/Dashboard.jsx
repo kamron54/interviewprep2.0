@@ -122,7 +122,7 @@ export default function Dashboard() {
       {/* Main Info & Actions */}
       <Card className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">
-          Welcome back, {userData.email}
+          Welcome, {userData?.name || auth.currentUser.email}
         </h1>
 
         <div className="mt-6 flex flex-col sm:flex-row sm:space-x-4 space-y-4 sm:space-y-0">

@@ -77,22 +77,26 @@ function AdminDashboard() {
           <table className="w-full border text-sm">
             <thead>
               <tr className="bg-gray-100">
+                <th className="border px-2 py-1 text-left">Name</th>
                 <th className="border px-2 py-1 text-left">Email</th>
                 <th className="border px-2 py-1">Verified</th>
                 <th className="border px-2 py-1">Trial Ends</th>
                 <th className="border px-2 py-1">Paid</th>
+                <th className="border px-2 py-1">Usage</th>
                 <th className="border px-2 py-1">Role</th>
               </tr>
             </thead>
             <tbody>
               {users.map((u) => (
                 <tr key={u.id}>
+                  <td className="border px-2 py-1">{u.name || '—'}</td>
                   <td className="border px-2 py-1">{u.email}</td>
                   <td className="border px-2 py-1 text-center">{u.emailVerified ? '✅' : '❌'}</td>
                   <td className="border px-2 py-1 text-center">
                     {u.trialExpiresAt ? new Date(u.trialExpiresAt).toLocaleString() : '—'}
                   </td>
                   <td className="border px-2 py-1 text-center">{u.hasPaid ? '✅' : '❌'}</td>
+                  <td className="border px-2 py-1 text-center">{u.usageCount ?? 0}</td>
                   <td className="border px-2 py-1 text-center">{u.role || 'user'}</td>
                 </tr>
               ))}

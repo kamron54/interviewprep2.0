@@ -1,3 +1,4 @@
+import { auth } from '../../firebase';
 export async function transcribeAudio(audioBlob) {
   console.log('🎧 Uploading audioBlob:', audioBlob);
   console.log('👉 Type:', audioBlob?.type);
@@ -7,12 +8,21 @@ export async function transcribeAudio(audioBlob) {
   const formData = new FormData();
   formData.append('file', audioBlob, 'audio.webm');
   formData.append('model', 'whisper-1');  // ← ensure the model is specified
-
+  
   try {
+    const token = await auth.currentUser.getIdToken();
     const response = await fetch('/api/transcribe', {
       method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
       body: formData,
     });
+
+    if (response.status === 403) {
+      const { error } = await response.json();
+      return { limitReached: true, error };
+    }
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -21,7 +31,7 @@ export async function transcribeAudio(audioBlob) {
     }
 
     const data = await response.json();
-    return data.text;
+    return { transcript: data.text, limitReached: false };
   } catch (error) {
     console.error('❌ Whisper API fetch error:', error.message);
     throw error;

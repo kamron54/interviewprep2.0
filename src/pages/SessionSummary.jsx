@@ -45,7 +45,16 @@ function SessionSummary() {
         setLoadingIndex(i);
 
         try {
-          const transcript = await transcribeAudio(item.audioBlob);
+          const result = await transcribeAudio(item.audioBlob);
+
+          if (result.limitReached) {
+            alert(result.error || "You've reached your usage limit.");
+            navigate('/dashboard'); // Or wherever you want to send them
+            return;
+          }
+
+          const transcript = result.transcript;
+
           let feedback = null;
 
           let finalTranscript = transcript;
