@@ -23,8 +23,7 @@ Does it directly answer the question with depth or reflection? Consider traits v
 Suggestions
 One or two specific, actionable ways to improve. If the response is already strong and well-suited for admissions, say “No suggestions for improvement.”
 
-Be concise, encouraging, and professional. Write in second-person using positive framing and constructive language. Your goal is to help the user improve their interview performance while maintaining confidence. 
-Also bold section headers using HTML Tags. 
+Overall, be concise, encouraging, and professional. Write in second-person using positive framing and constructive language. Your goal is to help the user improve their interview performance while maintaining confidence. 
 
 Question: "${question}"
 
