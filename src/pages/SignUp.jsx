@@ -48,14 +48,13 @@ function SignUp() {
     <div className="max-w-md mx-auto mt-10 p-6 border rounded-xl shadow-md bg-white space-y-4">
       <h1 className="text-2xl font-bold">Create Account</h1>
       <label className="block">
-        <span className="text-gray-700">Full Name</span>
         <input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
           required
           className="mt-1 block w-full border rounded-md p-2"
-          placeholder="Jane Doe"
+          placeholder="Name"
         />
       </label>
       <form onSubmit={handleSignUp} className="flex flex-col gap-4">
