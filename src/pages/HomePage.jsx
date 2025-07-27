@@ -18,7 +18,7 @@ export default function HomePage() {
       <section className="text-center px-6 py-20 bg-gray-50">
         <h1 className="text-4xl font-bold mb-4">Nail your interviews.</h1>
         <p className="text-lg mb-6">
-          Practice mock interviews and get instant feedback — built for applicants to medical, dental, pharmacy, PA, PT, and other healthcare programs.
+          Practice mock interviews and get instant feedback — built by a fellow student.
         </p>
         {user ? (
           <Link to="/setup">
@@ -41,7 +41,7 @@ export default function HomePage() {
       <div>
         <h3 className="text-2xl font-semibold mb-2">Choose your interview type</h3>
         <p className="text-gray-700">
-          Select the health professional field for your mock interview, including dental, medical, pharmacy, and more.
+          Select the healthcare program for your mock interview, including dental, medical, pharmacy, and more.
         </p>
       </div>
       <div className="bg-gray-50 p-6 rounded-lg shadow-md border w-full max-w-md mx-auto">
@@ -50,7 +50,11 @@ export default function HomePage() {
           <option>Dental</option>
           <option>Medical</option>
           <option>Pharmacy</option>
-          <option>Other</option>
+          <option>Physician Assistant</option>
+          <option>Physical Therapy</option>
+          <option>Occupational Therapy</option>
+          <option>Veterinary Medicine</option>
+          <option>Custom</option>
         </select>
         <button className="mt-4 w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition">
           Start Interview
@@ -121,16 +125,20 @@ export default function HomePage() {
       <p><strong>A:</strong> Nope — you get 24 hours free, no credit card required.</p>
     </li>
     <li>
-      <p><strong>Q:</strong> Why video?</p>
-      <p><strong>A:</strong> Seeing and hearing yourself is uncomfortable — and incredibly effective.</p>
+      <p><strong>Q:</strong> What health professional schools are covered? </p>
+      <p><strong>A:</strong> We cover interview preparation for Medical, Dental, Physician Assistant, Pharmacy, Occupational Therapy, Physical Therapy and Veterinary Medicine programs. </p>
     </li>
     <li>
-      <p><strong>Q:</strong> What if I don’t want to be on camera?</p>
-      <p><strong>A:</strong> You can choose audio-only mode before your interview begins.</p>
+      <p><strong>Q:</strong> What if I don't like the existing interview questions?</p>
+      <p><strong>A:</strong> You can create your own custom interviews by writing in questions and/or picking from our curated pool of questions. </p>
     </li>
     <li>
-      <p><strong>Q:</strong> Can I skip questions?</p>
-      <p><strong>A:</strong> Yes! You can skip any question at any time, even before recording.</p>
+      <p><strong>Q:</strong> What if I want unlimited access?</p>
+      <p><strong>A:</strong> You can purchase 1 year of unlimited use for $19. </p>
+    </li>
+    <li>
+      <p><strong>Q:</strong> What if I can’t afford to pay? </p>
+      <p><strong>A:</strong> Shoot me an email and I can extend your free limited access or give you a discount code for unlimited. I built this website to help students and I want it to be accessible to everyone. </p>
     </li>
   </ul>
 </section>
@@ -138,13 +146,20 @@ export default function HomePage() {
 {/* About */}
 <section id="about" className="bg-gray-50 px-6 py-20 max-w-6xl mx-auto border-t border-gray-200">
   <h2 className="text-3xl font-bold mb-8 text-center">About Me</h2>
-  <div className="max-w-3xl mx-auto text-lg text-gray-700 space-y-6">
-    <p>
-      My name is Kamron, and I’m a student at UCSF School of Dentistry. During my application process, I partook in a handful of interviews and was accepted to schools such as UPenn, Tufts, and UCSF. I built InterviewPrep because I know how intimidating the process can be — and I wanted to create a tool I wish I had when I was applying.
-    </p>
-    <p>
-      If you ever want advice, feel free to reach out. I also offer 1-on-1 mock interviews for $75/hr.
-    </p>
+  <div className="flex flex-col md:flex-row items-center space-y-6 md:space-y-0 md:space-x-6 max-w-3xl mx-auto text-lg text-gray-700">
+    <img
+      src="/images/kamron.jpg"
+      alt="Kamron"
+      className="w-28 h-28 rounded-full shadow-md object-cover"
+    />
+    <div className="flex-1 space-y-4">
+      <p>
+        My name is Kamron, and I’m a student at UCSF School of Dentistry. During my application process, I participated in a handful of interviews and was accepted to schools such as UPenn, Tufts, and UCSF. I built InterviewPrep because I know how intimidating the process can be — and I wanted to create a tool I wish I had when I was applying.
+      </p>
+      <p>
+        If you ever want advice, feel free to reach out. I also offer 1-on-1 mock interviews for $75/hr.
+      </p>
+    </div>
   </div>
 </section>
     </div>
