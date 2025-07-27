@@ -138,9 +138,10 @@ all.push({ ...item, transcript: finalTranscript, feedback });
 
                     <div className="bg-yellow-50 p-4 rounded border border-yellow-200">
                       <p className="font-semibold mb-1 text-gray-700">AI Feedback:</p>
-                      <pre className="text-sm text-gray-800 whitespace-pre-wrap">
-                        {item.feedback}
-                      </pre>
+                      <div
+                        className="text-sm text-gray-800 whitespace-pre-wrap"
+                        dangerouslySetInnerHTML={{ __html: item.feedback }}
+                      />
                     </div>
                   </>
                 )}

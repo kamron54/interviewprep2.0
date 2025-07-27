@@ -9,15 +9,14 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
-  const prompt = `You are an interview coach for ${profession} school admissions. Evaluate the following response to an interview question as if you were part of an admissions committee.
+  const prompt = `You are an interview coach for ${profession} school admissions. Evaluate the following response using the format below:
 
-Provide clear, constructive feedback using the format below:
+- <strong>Overall Impression<strong> Is the response professional, authentic, and appropriate for admissions?
+- <strong>Clarity & Structure<strong> Is the answer organized and easy to follow?
+- <strong>Content<strong> Does it directly answer the question with depth or reflection? Consider traits valued in ${profession} school admissions.
+- <strong>Suggestions<strong> One or two specific, actionable ways to improve. If the response is already strong and well-suited for admissions, say “No suggestions for improvement.”
 
-- Strengths
-- Areas to Improve
-- Suggestions
-
-Be concise, supportive, and maintain a professional tone. If no improvement is needed, say so.
+Be concise, encouraging, and professional. Write in second-person using positive framing and constructive language. Your goal is to help the user improve their interview performance while maintaining confidence. 
 
 Question: "${question}"
 
