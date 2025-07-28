@@ -195,11 +195,11 @@ function AdminQuestionManager() {
 
         <div>
   <label className="block font-medium mb-1">Tip (optional)</label>
-  <input
-    type="text"
+  <textarea
     value={tip}
     onChange={(e) => setTip(e.target.value)}
     className="w-full border p-2 rounded"
+    rows={2}
     placeholder="e.g., Tie your answer to a healthcare scenario"
   />
 </div>
@@ -270,13 +270,13 @@ function AdminQuestionManager() {
                       Big 3
                     </label>
 
-                    <input
-                      type="text"
+                    <textarea
                       value={editForm.tip}
                       onChange={(e) =>
                         setEditForm((f) => ({ ...f, tip: e.target.value }))
                       }
                       className="w-full border p-2 rounded"
+                      rows={2}
                       placeholder="Tip (optional)"
                     />
 
