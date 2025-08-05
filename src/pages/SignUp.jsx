@@ -37,7 +37,7 @@ function SignUp() {
 
       await sendEmailVerification(user);
 
-      setStatus('✅ Account created! Check your email to verify your address before logging in.');
+      setStatus('✅ Account created! Check your email to verify your address before logging in. (Check your spam folder if the email doesn’t arrive.)');
     } catch (err) {
       console.error('❌ Error:', err);
       setStatus('❌ ' + err.message);

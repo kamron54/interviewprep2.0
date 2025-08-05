@@ -21,7 +21,7 @@ export default function HomePage() {
           Practice mock interviews and get instant feedback — built by a fellow student.
         </p>
         {user ? (
-          <Link to="/setup">
+          <Link to="/dashboard">
             <Button type="primary">Start New Interview</Button>
           </Link>
         ) : (
