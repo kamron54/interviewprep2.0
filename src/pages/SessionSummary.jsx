@@ -26,7 +26,7 @@ function SessionSummary() {
   const navigate = useNavigate();
   const sessionData = location.state || {};
   const { recordings = [], profession } = sessionData;
-
+  const [expandedTips, setExpandedTips] = useState({});
   const [results, setResults] = useState([]);
   const [loadingIndex, setLoadingIndex] = useState(null);
 
@@ -91,7 +91,7 @@ all.push({ ...item, transcript: finalTranscript, feedback });
           </Button>
 
           <div className="flex gap-4 flex-wrap">
-            <Button type="warning" onClick={() => navigate('/setup')}>
+            <Button type="secondary" onClick={() => navigate('/setup')}>
               Restart Interview
             </Button>
             <Button type="secondary" onClick={() => navigate('/dashboard')}>
@@ -112,7 +112,22 @@ all.push({ ...item, transcript: finalTranscript, feedback });
             <p className="font-medium text-gray-800">Question {idx + 1}:</p>
             <p className="text-lg text-gray-900">{item.question}</p>
             {item.tip && (
-              <p className="text-sm text-blue-700 italic mt-1">Tip: {item.tip}</p>
+              <div className="mt-2">
+                <button
+                  onClick={() =>
+                    setExpandedTips(prev => ({ ...prev, [idx]: !prev[idx] }))
+                  }
+                  className="text-sm text-blue-600 underline focus:outline-none"
+                >
+                  {expandedTips[idx] ? 'Hide Tip' : 'Show Tip'}
+                </button>
+
+                {expandedTips[idx] && (
+                  <p className="text-sm text-blue-800 italic mt-1">
+                    {item.tip}
+                  </p>
+                )}
+              </div>
             )}
 
             {item.skipped ? (
