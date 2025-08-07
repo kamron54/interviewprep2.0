@@ -70,7 +70,14 @@ export default function Dashboard() {
     return (
       <div className="max-w-4xl mx-auto px-4 py-12">
         <Card>
-          <p className="text-red-600">{errorMessage}</p>
+          <div className="text-red-600">
+            <p>{errorMessage}</p>
+            {errorMessage.startsWith('Please verify your email') && (
+              <p className="text-sm text-gray-500 mt-1">
+                If you don’t see it, be sure to check your spam folder.
+              </p>
+            )}
+          </div>
         </Card>
       </div>
     );
