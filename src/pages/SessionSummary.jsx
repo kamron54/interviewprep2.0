@@ -29,6 +29,8 @@ function SessionSummary() {
   const [expandedTips, setExpandedTips] = useState({});
   const [results, setResults] = useState([]);
   const [loadingIndex, setLoadingIndex] = useState(null);
+  const progressPercent = Math.round(((loadingIndex ?? 0) / recordings.length) * 100);
+
 
   useEffect(() => {
     const processResponses = async () => {
@@ -83,6 +85,18 @@ all.push({ ...item, transcript: finalTranscript, feedback });
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-8">
       <h1 className="text-3xl font-bold text-gray-900">Session Summary</h1>
+
+      {loadingIndex !== null && (
+        <div className="w-full bg-gray-200 rounded-full h-4 mb-4">
+          <div
+            className="bg-blue-600 h-4 rounded-full transition-all duration-300"
+            style={{ width: `${progressPercent}%` }}
+          />
+          <p className="text-sm text-gray-600 text-center mt-1">
+            Processing response {loadingIndex + 1} of {recordings.length}
+          </p>
+        </div>
+      )}
 
       {results.length > 0 && (
         <div className="space-y-4">
