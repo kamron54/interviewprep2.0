@@ -48,7 +48,7 @@ function SessionSummary() {
           const result = await transcribeAudio(item.audioBlob);
 
           if (result.limitReached) {
-            alert(result.error || "You've reached your usage limit.");
+            alert(result.error || "We’ve noticed unusually heavy usage on your account. To ensure fair access for all users, we’ve temporarily paused usage. If you believe this is a mistake, please contact support.");
             navigate('/dashboard'); // Or wherever you want to send them
             return;
           }
