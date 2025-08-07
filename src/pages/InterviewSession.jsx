@@ -280,10 +280,10 @@ function InterviewSession() {
         )}
 
         {isRecording && (
-          <>
+          <div className="flex items-center gap-4 flex-wrap justify-center">
             <p className="text-green-700 font-semibold">🔴 Recording...</p>
             <Button type="danger" onClick={stopRecording}>Stop Recording</Button>
-          </>
+          </div>
         )}
 
         {!isRecording && !isCountingDown && (
