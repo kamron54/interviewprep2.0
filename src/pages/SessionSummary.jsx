@@ -12,6 +12,7 @@ const hallucinatedPhrases = [
   "I'm still here. I'm still here. I'm still here.",
   "Shh.",
   "Thank you so much for watching",
+  "Thank you.",
   "follow me on",
 ];
 
