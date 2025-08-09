@@ -67,10 +67,14 @@ function InterviewSession() {
 
   useEffect(() => {
     const prepareStream = async () => {
-      if (!isVideo || !isCountingDown) return;
+      // run during countdown for both modes
+      if (!isCountingDown) return;
 
       try {
-        const newStream = await getMediaStream();
+        const newStream = isVideo
+          ? await getMediaStream() // your helper (likely audio+video)
+          : await navigator.mediaDevices.getUserMedia({ audio: true }); // audio-only
+
         setStream(newStream);
       } catch (err) {
         console.error('Stream error:', err);
@@ -86,7 +90,7 @@ function InterviewSession() {
     if (videoRef.current && stream) {
       videoRef.current.srcObject = stream;
     }
-  }, [stream, videoRef.current]);
+  }, [stream]);
 
   // ✅ Cleanup stream and preview
   useEffect(() => {
@@ -196,7 +200,9 @@ function InterviewSession() {
     }).then(() => {
       const videoBlob = new Blob(videoChunksRef.current, { type: 'video/webm' });
       const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+
       const videoUrl = URL.createObjectURL(videoBlob);
+      const audioUrl = URL.createObjectURL(audioBlob);
 
       const currentQuestion = questions[questionIndex];
 
@@ -208,6 +214,7 @@ function InterviewSession() {
           videoBlob,
           videoUrl,
           audioBlob,
+          audioUrl,
           mode: config.mode,
           skipped: false,
         };
@@ -234,8 +241,19 @@ function InterviewSession() {
       setCount(5);
       setIsCountingDown(true);
     } else {
-      const finalRecs = recOverride ?? recordings; // ensure freshest data
-      navigate('/summary', { state: { recordings: finalRecs, profession: config.profession } });
+      const finalRecs = recOverride ?? recordings; // use freshest array if provided
+      const serializableRecordings = finalRecs.map((r) => ({
+        question: r.question,
+        tip: r.tip || '',
+        skipped: !!r.skipped,
+        mode: r.mode,
+        // only pass URLs/strings – no Blobs/functions/refs
+        videoUrl: r.videoUrl || null,
+        audioUrl: r.audioUrl || null,
+      }));
+      navigate('/summary', {
+        state: { recordings: serializableRecordings, profession: config.profession },
+      });
     }
   };
 
@@ -318,7 +336,7 @@ function InterviewSession() {
         )}
 
         {!isRecording && !isCountingDown && (
-          <Button type="primary" onClick={handleNext}>Next Question</Button>
+          <Button type="primary" onClick={() => handleNext()}>Next Question</Button>
         )}
       </div>
       {showConfirmSkip && (

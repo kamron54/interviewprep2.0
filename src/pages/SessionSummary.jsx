@@ -40,7 +40,7 @@ function SessionSummary() {
       for (let i = 0; i < recordings.length; i++) {
         const item = recordings[i];
 
-        if (item.skipped || !item.audioBlob) {
+        if (item.skipped || !item.audioUrl) {
           all.push({ ...item, transcript: null, feedback: null });
           continue;
         }
@@ -48,7 +48,9 @@ function SessionSummary() {
         setLoadingIndex(i);
 
         try {
-          const result = await transcribeAudio(item.audioBlob);
+          const res = await fetch(item.audioUrl);
+          const audioBlob = await res.blob();
+          const result = await transcribeAudio(audioBlob);
 
           if (result.limitReached) {
             alert(result.error || "We’ve noticed unusually heavy usage on your account. To ensure fair access for all users, we’ve temporarily paused usage. If you believe this is a mistake, please contact support.");
@@ -152,7 +154,24 @@ all.push({ ...item, transcript: finalTranscript, feedback });
             ) : (
               <>
                 {item.videoUrl ? (
-                  <video controls src={item.videoUrl} className="w-full rounded" />
+                  <video
+                    controls
+                    src={item.videoUrl}
+                    className="w-full rounded"
+                    preload="metadata"
+                    onLoadedMetadata={(e) => {
+                      const v = e.target;
+                      // Fix for Infinity/NaN duration from MediaRecorder
+                      if (!isFinite(v.duration) || isNaN(v.duration)) {
+                        v.currentTime = Number.MAX_SAFE_INTEGER;
+                        const snapBack = () => {
+                          v.removeEventListener('timeupdate', snapBack);
+                          v.currentTime = 0;
+                        };
+                        v.addEventListener('timeupdate', snapBack);
+                      }
+                    }}
+                  />
                 ) : (
                   <audio controls src={item.audioUrl} className="w-full rounded" />
                 )}
