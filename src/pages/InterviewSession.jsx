@@ -52,6 +52,26 @@ function InterviewSession() {
     setShowConfirmSkip(false);
   };
 
+// 🎥 Initialise stream on mount so preview works on Q1
+useEffect(() => {
+  const initStream = async () => {
+    try {
+      const newStream = isVideo
+        ? await getMediaStream()
+        : await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      setStream(newStream);
+    } catch (err) {
+      console.error('Stream init error:', err);
+      setStatus(err.message || 'Could not access media.');
+    }
+  };
+
+  if (!stream) {
+    initStream();
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []); // run only once on mount
 
   useEffect(() => {
     if (isCountingDown && count > 0) {

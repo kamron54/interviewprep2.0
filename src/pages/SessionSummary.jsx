@@ -14,6 +14,7 @@ const hallucinatedPhrases = [
   "Thank you so much for watching",
   "Thank you.",
   "follow me on",
+  "Thank you",
 ];
 
 function isMeaningfulTranscript(text) {
