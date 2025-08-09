@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { getMediaStream } from '../mediaStore';
+import { getMediaStream, getStoredMediaStream, clearStoredMediaStream } from '../mediaStore';
 import { db } from '../../firebase';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import Button from '../components/Button';
@@ -8,7 +8,7 @@ import Button from '../components/Button';
 function InterviewSession() {
   const location = useLocation();
   const navigate = useNavigate();
-  const config = location.state || {};
+  const { config } = location.state || {};
   const isVideo = config.mode === 'video';
 
   const [stream, setStream] = useState(null);
@@ -52,27 +52,6 @@ function InterviewSession() {
     setShowConfirmSkip(false);
   };
 
-// 🎥 Initialise stream on mount so preview works on Q1
-useEffect(() => {
-  const initStream = async () => {
-    try {
-      const newStream = isVideo
-        ? await getMediaStream()
-        : await navigator.mediaDevices.getUserMedia({ audio: true });
-
-      setStream(newStream);
-    } catch (err) {
-      console.error('Stream init error:', err);
-      setStatus(err.message || 'Could not access media.');
-    }
-  };
-
-  if (!stream) {
-    initStream();
-  }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, []); // run only once on mount
-
   useEffect(() => {
     if (isCountingDown && count > 0) {
       const timer = setTimeout(() => setCount(c => c - 1), 1000);
@@ -85,32 +64,54 @@ useEffect(() => {
     }
   }, [count, isCountingDown]);
 
-  useEffect(() => {
-    const prepareStream = async () => {
-      // run during countdown for both modes
-      if (!isCountingDown) return;
-
-      try {
-        const newStream = isVideo
-          ? await getMediaStream() // your helper (likely audio+video)
-          : await navigator.mediaDevices.getUserMedia({ audio: true }); // audio-only
-
-        setStream(newStream);
-      } catch (err) {
-        console.error('Stream error:', err);
-        setStatus(err.message || 'Could not access media.');
+    useEffect(() => {
+      const existing = getStoredMediaStream();
+      if (existing && existing.getTracks().some(t => t.readyState === 'live')) {
+        setStream(existing);
+        if (videoRef.current && config.mode === 'video') {
+          videoRef.current.srcObject = existing;
+        }
+        return;
       }
-    };
 
-    prepareStream();
-  }, [isCountingDown, isVideo]);
+      const requestStream = async () => {
+        try {
+          const newStream = config.mode === 'video'
+            ? await getMediaStream()
+            : await navigator.mediaDevices.getUserMedia({ audio: true });
 
-  // ✅ Bind stream to videoRef when ready
+          setStream(newStream);
+          if (videoRef.current && config.mode === 'video') {
+            videoRef.current.srcObject = newStream;
+          }
+        } catch (err) {
+          console.error('Stream request error:', err);
+          setStatus(err.message || '⚠️ Media not available.');
+        }
+      };
+
+      requestStream();
+    }, []);
+
   useEffect(() => {
-    if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream;
-    }
-  }, [stream]);
+    if (!isVideo) return;
+    const el = videoRef.current;
+    const previewVisible = isCountingDown || isRecording;
+    if (!previewVisible || !el || !stream) return;
+
+    el.srcObject = stream;
+    el.play?.().catch(() => {});
+
+    // Safety re-check in case autoplay stalls
+    const id = setTimeout(() => {
+      if (el.videoWidth === 0 && el.videoHeight === 0) {
+        el.srcObject = stream;
+        el.play?.().catch(() => {});
+      }
+    }, 200);
+
+    return () => clearTimeout(id);
+  }, [stream, isCountingDown, isRecording, isVideo]);
 
   // ✅ Cleanup stream and preview
   useEffect(() => {
@@ -121,6 +122,7 @@ useEffect(() => {
       if (videoRef.current) {
         videoRef.current.srcObject = null;
       }
+      clearStoredMediaStream();
     };
   }, [stream]);
 
@@ -221,7 +223,7 @@ useEffect(() => {
       const videoBlob = new Blob(videoChunksRef.current, { type: 'video/webm' });
       const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
 
-      const videoUrl = URL.createObjectURL(videoBlob);
+      const videoUrl = isVideo ? URL.createObjectURL(videoBlob) : null;
       const audioUrl = URL.createObjectURL(audioBlob);
 
       const currentQuestion = questions[questionIndex];
@@ -231,7 +233,7 @@ useEffect(() => {
         next[questionIndex] = {
           question: currentQuestion.text,
           tip: currentQuestion.tip || '',
-          videoBlob,
+          videoBlob: isVideo ? videoBlob : null,
           videoUrl,
           audioBlob,
           audioUrl,
@@ -242,15 +244,6 @@ useEffect(() => {
       });
 
       setIsRecording(false);
-
-      // ✅ Stop stream and clear preview
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-        setStream(null);
-      }
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
     });
   };
 
@@ -309,25 +302,58 @@ useEffect(() => {
       </div>
 
       <div className="p-4 border border-gray-200 rounded-xl bg-white shadow-sm space-y-4">
-        <p className="text-lg font-medium text-gray-800">{questions[questionIndex].text}</p>
+        <p className="text-lg font-medium text-gray-800">
+          {questions[questionIndex].text}
+        </p>
 
-        {recordings[questionIndex]?.videoUrl && (
-          <div>
-            <label className="block font-medium mb-1">Your Answer</label>
-            <video controls className="w-full rounded-lg" src={recordings[questionIndex].videoUrl} />
+        {/* Your Answer playback lives here when not previewing/recording */}
+        {!showPreview && recordings[questionIndex]?.videoUrl && (
+          <div className="mt-3">
+            <p className="block font-medium mb-1">Your Answer</p>
+            <div
+              className="relative w-full"
+              style={{
+                aspectRatio: config.videoAspectRatio || '16 / 9'
+              }}
+            >
+              <video
+                controls
+                className="absolute inset-0 w-full h-full object-cover rounded"
+                src={recordings[questionIndex].videoUrl}
+                preload="metadata"
+              />
+            </div>
           </div>
         )}
       </div>
 
-      {showPreview && (
-        <div>
-          <video
-            ref={videoRef}
-            autoPlay
-            muted
-            playsInline
-            className="w-full border rounded"
-          />
+      {/* Media slot: live preview during countdown/recording */}
+      {isVideo && (isCountingDown || isRecording) && (
+        <div className="w-full border rounded bg-black/5">
+          <div
+            className="relative w-full"
+            style={{
+              aspectRatio: config.videoAspectRatio || '16 / 9'
+            }}
+          >
+            {/* Live preview */}
+            <video
+              ref={videoRef}
+              autoPlay
+              muted
+              playsInline
+              className={`absolute inset-0 w-full h-full object-cover rounded transition-opacity duration-200 ${
+                showPreview ? 'opacity-100' : 'opacity-0'
+              }`}
+            />
+
+            {/* Placeholder */}
+            {!showPreview && (
+              <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">
+                Camera preview will appear here
+              </div>
+            )}
+          </div>
         </div>
       )}
 

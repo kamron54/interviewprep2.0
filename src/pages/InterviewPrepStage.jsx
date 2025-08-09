@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
+import { setStoredMediaStream } from '../mediaStore';
 
 function InterviewPrepStage() {
   const navigate = useNavigate();
@@ -19,6 +20,17 @@ function InterviewPrepStage() {
         video: isVideo,
       });
       setStream(mediaStream);
+      setStoredMediaStream(mediaStream);
+
+          if (isVideo) {
+            const track = mediaStream.getVideoTracks()[0];
+            const settings = track.getSettings();
+            // Save aspect ratio in config
+            config.videoAspectRatio = settings.width && settings.height
+              ? settings.width / settings.height
+              : 16 / 9; // fallback
+          }
+
       setStatus('');
     } catch (err) {
       console.error('Permission denied', err);
@@ -32,8 +44,7 @@ function InterviewPrepStage() {
       return;
     }
 
-    // Don't pass the stream — just go to interview page
-    navigate('/interview', { state: config });
+    navigate('/interview', { state: { config } });
   };
 
   useEffect(() => {
@@ -41,6 +52,14 @@ function InterviewPrepStage() {
       videoRef.current.srcObject = stream;
     }
   }, [stream, isVideo]);
+
+  useEffect(() => {
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(t => t.stop());
+      }
+    };
+  }, [stream]);
 
   return (
     <div className="max-w-xl mx-auto p-6 space-y-6 text-center">
