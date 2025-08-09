@@ -19,6 +19,7 @@ function InterviewSession() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordings, setRecordings] = useState([]);
   const [status, setStatus] = useState('');
+  const [showConfirmSkip, setShowConfirmSkip] = useState(false);
 
   const videoRecorderRef = useRef(null);
   const audioRecorderRef = useRef(null);
@@ -28,6 +29,28 @@ function InterviewSession() {
 
   const [timeLimitReached, setTimeLimitReached] = useState(false);
   const recordingTimerRef = useRef(null);
+
+  const handleSkipClick = () => {
+    // Consider it "has a recording" if this question already has a non-skipped entry
+    const hasRecordingForThisQuestion =
+      !!recordings[questionIndex] && recordings[questionIndex].skipped !== true;
+
+    if (hasRecordingForThisQuestion) {
+      setShowConfirmSkip(true);
+    } else {
+      // No recording yet — skip immediately (old behavior)
+      handleSkip();
+    }
+  };
+
+  const confirmDiscardAndSkip = () => {
+    setShowConfirmSkip(false);
+    handleSkip(); // this will overwrite the current slot with skipped
+  };
+
+  const cancelDiscard = () => {
+    setShowConfirmSkip(false);
+  };
 
 
   useEffect(() => {
@@ -177,17 +200,19 @@ function InterviewSession() {
 
       const currentQuestion = questions[questionIndex];
 
-      setRecordings((prev) => [
-        ...prev,
-        {
-          question: questions[questionIndex].text,
+      setRecordings(prev => {
+        const next = [...prev];
+        next[questionIndex] = {
+          question: currentQuestion.text,
           tip: currentQuestion.tip || '',
           videoBlob,
           videoUrl,
           audioBlob,
           mode: config.mode,
-        },
-      ]);
+          skipped: false,
+        };
+        return next;
+      });
 
       setIsRecording(false);
 
@@ -202,29 +227,35 @@ function InterviewSession() {
     });
   };
 
-  const handleNext = () => {
+  const handleNext = (recOverride) => {
     setTimeLimitReached(false); // 🔁 clear the message
     if (questionIndex + 1 < questions.length) {
       setQuestionIndex((i) => i + 1);
       setCount(5);
       setIsCountingDown(true);
     } else {
-      navigate('/summary', { state: { recordings, profession: config.profession } });
+      const finalRecs = recOverride ?? recordings; // ensure freshest data
+      navigate('/summary', { state: { recordings: finalRecs, profession: config.profession } });
     }
   };
 
   const handleSkip = () => {
-    setRecordings((prev) => [
-      ...prev,
-      {
-        question: questions[questionIndex].text,
-        skipped: true,
-        videoBlob: null,
-        audioBlob: null,
-        mode: config.mode,
-      },
-    ]);
-    handleNext();
+    const skippedEntry = {
+      question: questions[questionIndex].text,
+      skipped: true,
+      videoBlob: null,
+      audioBlob: null,
+      videoUrl: null,
+      mode: config.mode,
+      tip: questions[questionIndex].tip || '',
+    };
+
+    // Build the next array synchronously so we can pass it to handleNext
+    const next = [...recordings];
+    next[questionIndex] = skippedEntry;
+
+    setRecordings(next);
+    handleNext(next); // ensures summary sees the skipped state on the last question
   };
 
   const showPreview = isVideo && (isCountingDown || isRecording);
@@ -276,7 +307,7 @@ function InterviewSession() {
 
       <div className="flex gap-4 flex-wrap justify-center">
         {!isRecording && (
-          <Button type="secondary" onClick={handleSkip}>Skip</Button>
+          <Button type="secondary" onClick={handleSkipClick}>Skip</Button>
         )}
 
         {isRecording && (
@@ -290,6 +321,35 @@ function InterviewSession() {
           <Button type="primary" onClick={handleNext}>Next Question</Button>
         )}
       </div>
+      {showConfirmSkip && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          aria-modal="true"
+          role="dialog"
+        >
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={cancelDiscard}
+            aria-hidden="true"
+          />
+
+          {/* Modal panel */}
+          <div className="relative z-10 w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <h2 className="text-xl font-semibold text-gray-900">Discard this answer?</h2>
+            <p className="mt-2 text-sm text-gray-600">
+              You’ve already recorded an answer for this question. Skipping will discard it and mark this question as skipped.
+            </p>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <Button type="secondary" onClick={cancelDiscard}>Cancel</Button>
+              <Button type="danger" onClick={confirmDiscardAndSkip}>
+                Discard &amp; Skip
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
