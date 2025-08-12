@@ -18,7 +18,7 @@ export default function HomePage() {
       <section className="text-center px-6 py-20 bg-gray-50">
         <h1 className="text-4xl font-bold mb-4">Nail your interviews.</h1>
         <p className="text-lg mb-6">
-          Practice mock interviews and get instant feedback — built by a fellow student.
+          Practice mock interviews and get instant feedback.
         </p>
         {user ? (
           <Link to="/dashboard">
@@ -41,14 +41,14 @@ export default function HomePage() {
       <div>
         <h3 className="text-2xl font-semibold mb-2">Choose your interview type</h3>
         <p className="text-gray-700">
-          Select the healthcare program for your mock interview, including dental, medical, pharmacy, and more.
+          Select from a number of interview presets, or build your own mock interview.
         </p>
       </div>
       <div className="bg-gray-50 p-6 rounded-lg shadow-md border w-full max-w-md mx-auto">
         <label className="block text-sm font-medium mb-2">Interview Type</label>
         <select className="w-full border rounded px-3 py-2">
+          <option>Medical School Admissions</option>
           <option>Dental</option>
-          <option>Medical</option>
           <option>Pharmacy</option>
           <option>Physician Assistant</option>
           <option>Physical Therapy</option>
@@ -56,7 +56,12 @@ export default function HomePage() {
           <option>Veterinary Medicine</option>
           <option>Custom</option>
         </select>
-        <button className="mt-4 w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition">
+        <button 
+          type="button"
+          disabled
+          aria-disabled="true"
+          className="mt-4 w-full bg-blue-600 text-white py-2 px-4 rounded opacity-100 cursor-not-allowed"
+        >
           Start Interview
         </button>
       </div>
@@ -93,7 +98,11 @@ export default function HomePage() {
         <div>
           <p className="font-semibold">Why do you want to become a doctor?</p>
           <div className="mt-1">
-            <button className="text-blue-600 underline text-xs">Watch Your Answer</button>
+            <button 
+              type="button"
+              disabled
+              aria-disabled="true"
+            className="text-blue-600 underline text-xs">Watch Your Answer</button>
           </div>
         </div>
         <div>
@@ -112,7 +121,7 @@ export default function HomePage() {
 <section className="bg-gray-50 px-6 py-20 max-w-6xl mx-auto">
   <h2 className="text-3xl font-bold mb-6 text-center">Why It Works</h2>
   <p className="text-lg text-gray-700 max-w-3xl mx-auto text-center">
-    Watching yourself answer questions is uncomfortable — but it’s the fastest way to improve. I was nervous about interviews too. Practicing with real questions and watching my answers back helped me walk into every interview feeling confident.
+    Watching yourself answer questions is uncomfortable — but it’s the fastest way to improve. When I was applying to dental school, I was nervous about interviews too. Practicing with real questions and watching my answers back helped me walk into every interview feeling confident.
   </p>
 </section>
 
@@ -125,8 +134,8 @@ export default function HomePage() {
       <p><strong>A:</strong> Nope — you get 24 hours free, no credit card required.</p>
     </li>
     <li>
-      <p><strong>Q:</strong> What health professional schools are covered? </p>
-      <p><strong>A:</strong> We cover interview preparation for Medical, Dental, Physician Assistant, Pharmacy, Occupational Therapy, Physical Therapy and Veterinary Medicine programs. </p>
+      <p><strong>Q:</strong> What interview presets are included? </p>
+      <p><strong>A:</strong> We cover interview preparation for all health profesions schools, including Medical, Dental, Physician Assistant, Pharmacy, Occupational Therapy, Physical Therapy and Veterinary Medicine programs. </p>
     </li>
     <li>
       <p><strong>Q:</strong> What if I don't like the existing interview questions?</p>
@@ -138,7 +147,7 @@ export default function HomePage() {
     </li>
     <li>
       <p><strong>Q:</strong> What if I can’t afford to pay? </p>
-      <p><strong>A:</strong> Shoot me an email and I can extend your free limited access or give you a discount code for unlimited. I built this website to help students and I want it to be accessible to everyone. </p>
+      <p><strong>A:</strong> Shoot me an email and I can extend your free limited access or give you a discount code for unlimited. I built this website to help people and I want it to be accessible to everyone. </p>
     </li>
   </ul>
 </section>
