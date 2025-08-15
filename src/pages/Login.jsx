@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth, db } from '../../firebase';
 import { doc, getDoc } from 'firebase/firestore';
@@ -9,7 +9,9 @@ function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [status, setStatus] = useState('');
+  const location = useLocation();
   const navigate = useNavigate();
+  const from = location.state?.from;
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -26,9 +28,11 @@ function Login() {
       setStatus('✅ Logged in!');
 
       if (data.role === 'admin') {
-        navigate('/admin');
+        navigate('/admin', { replace: true });
+      } else if (from) {
+        navigate(from, { replace: true }); // go back to /dental/... or wherever they were headed
       } else {
-        navigate('/dashboard');
+        navigate('/dashboard', { replace: true });
       }
     } catch (err) {
       console.error('❌ Login error:', err);

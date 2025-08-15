@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../../firebase";
 import Button from "../components/Button";
+import { useProfession } from '../professions/ProfessionContext.jsx';
 
 export default function HomePage() {
   const [user, setUser] = useState(null);
@@ -12,11 +13,38 @@ export default function HomePage() {
     return () => unsubscribe();
   }, []);
 
+  const ctx = useProfession?.();
+  const professionName = ctx?.config?.displayName; // e.g., "Dental School"
+  const heroTitle = ctx?.config?.hero?.title ?? 'Nail your interviews.';
+  const question = ctx?.config?.defaultQuestion || 'Tell me about yourself';
+  // Which profession are we in? (undefined on generic homepage)
+  const slug = ctx?.config?.slug;
+
+  // Step 3 lead-in sentence: generic, dental, medical
+  const baseFeedbackLead =
+    'Watch your recorded responses and receive instant, personalized feedback from an';
+  const step3Lead =
+    slug === 'dental'
+      ? `${baseFeedbackLead} AI model engineered for dental school admissions.`
+      : slug === 'medical'
+      ? `${baseFeedbackLead} AI model engineered for medical school admissions.`
+      : `${baseFeedbackLead} adaptive AI model.`;
+
+  // Example feedback body text under Step 3, tailored per profession
+  const feedbackText =
+    slug === 'dental'
+      ? 'Your response showed passion for dentistry and a clear personal journey. Try to include more specific long-term goals and structured examples.'
+      : slug === 'medical'
+      ? 'Your response showed passion for healthcare and a clear personal journey. Try to include more specific long-term goals and structured examples.'
+      : 'Good overview. Sharpen it with a concise arc: background → strengths → one concrete example of impact. Finish with what you’re aiming for next.';
+
+
   return (
     <div className="bg-white text-gray-900 font-sans">
       {/* Hero */}
       <section className="text-center px-6 py-20 bg-gray-50">
-        <h1 className="text-4xl font-bold mb-4">Nail your interviews.</h1>
+        <h1 className="text-4xl font-bold mb-4">{heroTitle}</h1>
+
         <p className="text-lg mb-6">
           Practice mock interviews and get instant feedback.
         </p>
@@ -41,26 +69,57 @@ export default function HomePage() {
       <div>
         <h3 className="text-2xl font-semibold mb-2">Choose your interview type</h3>
         <p className="text-gray-700">
-          Select from a number of interview presets, or build your own mock interview.
+          Choose between a standard, interview-day experience or a custom session focused on specific questions.
         </p>
       </div>
+
+      {/* Mock of the Setup UI (non-interactive preview) */}
       <div className="bg-gray-50 p-6 rounded-lg shadow-md border w-full max-w-md mx-auto">
-        <label className="block text-sm font-medium mb-2">Interview Type</label>
-        <select className="w-full border rounded px-3 py-2">
-          <option>Medical School Admissions</option>
-          <option>Dental</option>
-          <option>Pharmacy</option>
-          <option>Physician Assistant</option>
-          <option>Physical Therapy</option>
-          <option>Occupational Therapy</option>
-          <option>Veterinary Medicine</option>
-          <option>Custom</option>
-        </select>
-        <button 
+        <div className="space-y-2">
+        </div>
+
+        {/* Stacked radio cards (preview only) */}
+        <div className="space-y-3 mt-2">
+          {/* Standard (pre-selected look) */}
+          <label className="flex items-center p-4 border rounded-lg cursor-default pointer-events-none">
+            <input
+              type="radio"
+              name="previewInterviewType"
+              className="mr-3 h-4 w-4 text-blue-600"
+              checked
+              readOnly
+            />
+            <div>
+              <p className="font-medium text-gray-900">Standard</p>
+              <p className="text-sm text-gray-600">
+                Questions are generated as you go.
+              </p>
+            </div>
+          </label>
+
+          {/* Custom (unselected look) */}
+          <label className="flex items-center p-4 border rounded-lg cursor-default">
+            <input
+              type="radio"
+              name="previewInterviewType"
+              className="mr-3 h-4 w-4 text-blue-600"
+              disabled
+              readOnly
+            />
+            <div>
+              <p className="font-medium text-gray-900">Custom</p>
+              <p className="text-sm text-gray-600">
+                Choose or create specific questions beforehand.
+              </p>
+            </div>
+          </label>
+        </div>
+
+        <button
           type="button"
           disabled
           aria-disabled="true"
-          className="mt-4 w-full bg-blue-600 text-white py-2 px-4 rounded opacity-100 cursor-not-allowed"
+          className="mt-4 w-full bg-blue-600 text-white py-2 px-4 rounded opacity-100"
         >
           Start Interview
         </button>
@@ -82,7 +141,7 @@ export default function HomePage() {
           className="w-full h-full object-cover"
         />
         <div className="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded">Recording</div>
-        <div className="absolute bottom-2 left-2 text-white text-sm px-2">Why do you want to become a doctor?</div>
+        <div className="absolute bottom-2 left-2 text-white text-sm px-2">{question}</div>
       </div>
     </div>
 
@@ -90,13 +149,11 @@ export default function HomePage() {
     <div className="grid md:grid-cols-2 gap-10 items-center">
       <div>
         <h3 className="text-2xl font-semibold mb-2">Review your answers & get instant feedback</h3>
-        <p className="text-gray-700">
-          Watch your recorded responses and receive AI-powered feedback to improve your performance immediately.
-        </p>
+        <p className="text-gray-700">{step3Lead}</p>
       </div>
       <div className="bg-gray-50 p-6 rounded-lg shadow-md border w-full max-w-md mx-auto space-y-4 text-sm">
         <div>
-          <p className="font-semibold">Why do you want to become a doctor?</p>
+          <p className="font-semibold">{question}</p>
           <div className="mt-1">
             <button 
               type="button"
@@ -106,10 +163,8 @@ export default function HomePage() {
           </div>
         </div>
         <div>
-          <p className="font-semibold mb-1">AI Feedback</p>
-          <p className="text-gray-700">
-            Your response showed passion for healthcare and a clear personal journey. Try to include more specific long-term goals and structured examples.
-          </p>
+          <p className="font-semibold mb-1">Feedback</p>
+          <p className="text-gray-700">{feedbackText}</p>
         </div>
       </div>
     </div>
@@ -134,10 +189,6 @@ export default function HomePage() {
       <p><strong>A:</strong> Nope — you get 24 hours free, no credit card required.</p>
     </li>
     <li>
-      <p><strong>Q:</strong> What interview presets are included? </p>
-      <p><strong>A:</strong> We cover interview preparation for all health profesions schools, including Medical, Dental, Physician Assistant, Pharmacy, Occupational Therapy, Physical Therapy and Veterinary Medicine programs. </p>
-    </li>
-    <li>
       <p><strong>Q:</strong> What if I don't like the existing interview questions?</p>
       <p><strong>A:</strong> You can create your own custom interviews by writing in questions and/or picking from our curated pool of questions. </p>
     </li>
@@ -147,7 +198,7 @@ export default function HomePage() {
     </li>
     <li>
       <p><strong>Q:</strong> What if I can’t afford to pay? </p>
-      <p><strong>A:</strong> Shoot me an email and I can extend your free limited access or give you a discount code for unlimited. I built this website to help people and I want it to be accessible to everyone. </p>
+      <p><strong>A:</strong> Shoot me an email and I can extend your free limited access or give you a discount code for unlimited. I built this website to help others and I want it to be accessible to everyone. </p>
     </li>
   </ul>
 </section>

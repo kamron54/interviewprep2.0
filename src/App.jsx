@@ -16,6 +16,19 @@ import InterviewTips from './pages/InterviewTips';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminQuestionManager from './pages/AdminQuestionManager';
 
+import { ProfessionProvider } from './professions/ProfessionContext';
+import ProfessionSelector from './pages/ProfessionSelector';
+
+import { useLocation } from 'react-router-dom';
+
+function Protected({ user, children }) {
+  const location = useLocation();
+  if (!user) {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  }
+  return children;
+}
+
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -32,46 +45,50 @@ function App() {
 
   return (
     <Routes>
-      <Route path="/" element={<Layout />}>
-        {/* Always render HomePage at “/” */}
-        <Route index element={<HomePage />} />
+      {/* Root selector (no layout around it) */}
+      <Route path="/" element={<ProfessionSelector />} />
 
-        {/* Public routes */}
+      {/* Non-profession site (keeps all existing routes/guards) */}
+      <Route element={<Layout />}>
+        {/* If you still want a generic homepage, serve it at /home */}
+        <Route path="home" element={<HomePage />} />
+
+        {/* Public */}
         <Route path="login" element={<Login />} />
         <Route path="signup" element={<SignUp />} />
         <Route path="interview-tips" element={<InterviewTips />} />
 
-        {/* Protected routes */}
-        <Route
-          path="dashboard"
-          element={user ? <Dashboard /> : <Navigate to="/" />}
-        />
-        <Route
-          path="setup"
-          element={user ? <InterviewSetup /> : <Navigate to="/" />}
-        />
-        <Route
-          path="interview"
-          element={user ? <InterviewSession /> : <Navigate to="/" />}
-        />
-        <Route
-          path="summary"
-          element={user ? <SessionSummary /> : <Navigate to="/" />}
-        />
-        <Route
-          path="prep"
-          element={user ? <InterviewPrepStage /> : <Navigate to="/" />}
-        />
-        <Route
-          path="admin"
-          element={user ? <AdminDashboard /> : <Navigate to="/" />}
-        />
+        {/* Protected */}
+        <Route path="dashboard" element={<Protected user={user}><Dashboard /></Protected>} />
+        <Route path="setup"     element={<Protected user={user}><InterviewSetup /></Protected>} />
+        <Route path="interview" element={<Protected user={user}><InterviewSession /></Protected>} />
+        <Route path="summary"   element={<Protected user={user}><SessionSummary /></Protected>} />
+        <Route path="prep"      element={<Protected user={user}><InterviewPrepStage /></Protected>} />
+
+        {/* Admin */}
+        <Route path="admin"     element={<Protected user={user}><AdminDashboard /></Protected>} />
         <Route path="admin-dashboard" element={<AdminDashboard />} />
-        <Route
-          path="admin/questions"
-          element={user ? <AdminQuestionManager /> : <Navigate to="/" />}
-        />
+        <Route path="admin/questions" element={<Protected user={user}><AdminQuestionManager /></Protected>} />
       </Route>
+
+      {/* Profession-scoped site (parallel to the above) */}
+      <Route
+        path="/:profession/*"
+        element={
+          <ProfessionProvider>
+            <Layout />
+          </ProfessionProvider>
+        }
+      >
+        <Route index element={<HomePage />} />
+        <Route path="tips" element={<InterviewTips />} />
+        <Route path="setup"   element={<Protected user={user}><InterviewSetup /></Protected>} />
+        <Route path="session" element={<Protected user={user}><InterviewSession /></Protected>} />
+        <Route path="summary" element={<Protected user={user}><SessionSummary /></Protected>} />
+      </Route>
+
+      {/* Fallback */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

@@ -18,7 +18,7 @@ export default function InterviewTips() {
 
   return (
     <div className="px-6 py-16 max-w-5xl mx-auto">
-      <h1 className="text-4xl font-semibold mb-6">Interview Tips</h1>
+      <h1 className="text-4xl font-semibold mb-6">General Interview Tips</h1>
 
       <div className="space-y-6 mb-8">
         <div className="bg-gray-50 p-6 rounded-lg text-gray-700 leading-relaxed">

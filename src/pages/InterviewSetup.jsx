@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { getDocs, collection } from 'firebase/firestore';
 import { db } from '../../firebase';
 
 function InterviewSetup() {
-  const [profession, setProfession] = useState('Dental');
+  const [interviewType, setInterviewType] = useState('random');
   const [mode, setMode] = useState('video');
   const [big3, setBig3] = useState(true);
   const [questionCount, setQuestionCount] = useState(5);
@@ -12,18 +12,34 @@ function InterviewSetup() {
   const [customQuestions, setCustomQuestions] = useState([]);
   const [customInput, setCustomInput] = useState('');
   const [questionBank, setQuestionBank] = useState([]);
+  const { profession: professionSlug } = useParams();
+  const tagForProfession = (slug) => {
+    if (!slug) return null;
+    const map = {
+      dental: 'Dental',
+      medical: 'Medical',
+      pt: 'Physical Therapy',
+      pa: 'Physician Assistant',
+      pharmacy: 'Pharmacy',
+      ot: 'Occupational Therapy',
+      veterinary: 'Veterinary Medicine',
+    };
+    return map[slug.toLowerCase()] ?? null;
+  };
+  const professionTag = tagForProfession(professionSlug);
 
 
   const handleStart = () => {
   const config = {
-    profession,
+    profession: professionTag || 'Dental',  // fallback if not in a slugged route
     mode,
     big3,
     questionCount,
+    interviewType, // new: 'random' | 'custom' (for UI awareness downstream if you want it)
   };
 
   // If user selected "Custom", override the config
-  if (profession === "Custom") {
+  if (interviewType === "custom") {
     config.questions = customQuestions; // The user's hand-picked or typed questions
     config.big3 = false; // No need for big 3 logic
     config.questionCount = customQuestions.length;
@@ -46,28 +62,48 @@ useEffect(() => {
   fetchQuestions();
 }, []);
 
+const visibleBank =
+  interviewType === 'custom' && professionTag
+    ? questionBank.filter(q => q.mainTags?.includes(professionTag))
+    : questionBank;
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-12 space-y-8">
       <h1 className="text-3xl font-bold text-gray-900">Interview Setup</h1>
 
       <div className="space-y-4">
-        {/* Profession Selection */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Profession</label>
-          <select
-            value={profession}
-            onChange={(e) => setProfession(e.target.value)}
-            className="w-full p-2 border rounded-lg"
-          >
-            <option value="Dental">Dental</option>
-            <option value="Medical">Medical</option>
-            <option value="Physical Therapy">Physical Therapy</option>
-            <option value="Physician Assistant">Physician Assistant</option>
-            <option value="Pharmacy">Pharmacy</option>
-            <option value="Occupational Therapy">Occupational Therapy</option>
-            <option value="Veterinary Medicine">Veterinary Medicine</option>
-            <option value="Custom">Custom</option>
-          </select>
+
+        {/* Interview Type */}
+        <div className="space-y-3">
+          <label className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50">
+            <input
+              type="radio"
+              name="interviewType"
+              value="random"
+              checked={interviewType === 'random'}
+              onChange={(e) => setInterviewType(e.target.value)}
+              className="mr-3"
+            />
+            <div>
+              <p className="font-medium text-gray-900">Standard</p>
+              <p className="text-sm text-gray-600">Questions are generated as you go for a realistic, interview-day experience.</p>
+            </div>
+          </label>
+
+          <label className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50">
+            <input
+              type="radio"
+              name="interviewType"
+              value="custom"
+              checked={interviewType === 'custom'}
+              onChange={(e) => setInterviewType(e.target.value)}
+              className="mr-3"
+            />
+            <div>
+              <p className="font-medium text-gray-900">Custom</p>
+              <p className="text-sm text-gray-600">Choose or create specific questions to target areas you want to practice.</p>
+            </div>
+          </label>
         </div>
 
         {/* Recording Mode */}
@@ -83,7 +119,7 @@ useEffect(() => {
           </select>
         </div>
 
-    {profession !== 'Custom' && (
+    {interviewType === 'random' && (
       <>
         {/* Include Big 3 */}
         <div className="flex items-center space-x-2">
@@ -127,7 +163,7 @@ useEffect(() => {
     )}
 
         {/* Costum Builder */}
-        {profession === 'Custom' && (
+        {interviewType === 'custom' && (
           <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
             <p className="text-sm font-semibold text-gray-700">Custom Interview Builder</p>
 
@@ -179,7 +215,7 @@ useEffect(() => {
               <p className="text-sm font-semibold text-gray-700 mb-2">Browse Question Bank</p>
 
               <div className="max-h-64 overflow-y-auto border rounded-lg p-2 space-y-2 bg-white">
-                {questionBank.map((q) => (
+                {visibleBank.map((q) => (
                   <div key={q.id} className="flex justify-between items-center border-b pb-2">
                     <span className="text-sm text-gray-800">{q.text}</span>
                     <button

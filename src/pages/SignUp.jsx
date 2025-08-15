@@ -33,11 +33,12 @@ function SignUp() {
         trialExpiresAt: trialExpiresAt.toISOString(),
         hasPaid: false,
         promoCodeUsed: null,
+        emailVerified: false,
       });
 
       await sendEmailVerification(user);
 
-      setStatus('✅ Account created! Check your email to verify your address before logging in.');
+      navigate('/dashboard', { replace: true });
     } catch (err) {
       console.error('❌ Error:', err);
       setStatus('❌ ' + err.message);
@@ -78,16 +79,7 @@ function SignUp() {
           Sign Up
         </Button>
       </form>
-      {status && (
-        <div>
-          <p className="text-sm text-gray-700">{status}</p>
-          {status.startsWith('✅ Account created!') && (
-            <p className="text-xs text-gray-500 mt-1">
-              *The message may be in your spam folder.
-            </p>
-          )}
-        </div>
-      )}
+      {status && <p className="text-sm text-gray-700">{status}</p>}
     </div>
   );
 }

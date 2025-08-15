@@ -1,6 +1,7 @@
 // src/pages/Dashboard.jsx
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { updateDoc } from 'firebase/firestore';
 import { auth, db } from '../../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
@@ -9,7 +10,7 @@ import Card from '../components/Card';
 
 export default function Dashboard() {
   const [userData, setUserData] = useState(null);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [isVerified, setIsVerified] = useState(true);
   const navigate = useNavigate();
 
   // Fetch user & Firestore record
@@ -19,22 +20,29 @@ export default function Dashboard() {
         navigate('/login');
         return;
       }
-      if (!user.emailVerified) {
-        setErrorMessage(
-          'Please verify your email before continuing. Check your inbox for a verification link.'
-        );
-        return;
+      // Always reload so we get the latest verification state
+      await user.reload();
+      const nowVerified = user.emailVerified === true;
+      setIsVerified(nowVerified);
+
+      // Keep Firestore in sync for this user (helps Admin view)
+      try {
+        if (nowVerified) {
+          await updateDoc(doc(db, 'users', user.uid), { emailVerified: true });
+        }
+      } catch (e) {
+        console.warn('Could not update emailVerified flag:', e);
       }
+
       try {
         const docSnap = await getDoc(doc(db, 'users', user.uid));
         if (!docSnap.exists()) {
-          setErrorMessage('User data not found.');
+          console.warn('User data not found.');
         } else {
           setUserData(docSnap.data());
         }
       } catch (err) {
         console.error('Error fetching user data:', err);
-        setErrorMessage('Failed to fetch user data.');
       }
     });
     return () => unsubscribe();
@@ -66,22 +74,6 @@ export default function Dashboard() {
   };
 
   // Loading or error states
-  if (errorMessage) {
-    return (
-      <div className="max-w-4xl mx-auto px-4 py-12">
-        <Card>
-          <div className="text-red-600">
-            <p>{errorMessage}</p>
-            {errorMessage.startsWith('Please verify your email') && (
-              <p className="text-sm text-gray-500 mt-1">
-                If you don’t see it, be sure to check your spam folder.
-              </p>
-            )}
-          </div>
-        </Card>
-      </div>
-    );
-  }
   if (!userData) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-12">
@@ -100,8 +92,22 @@ export default function Dashboard() {
   const hoursLeft = Math.floor(msLeft / 1000 / 60 / 60);
   const minutesLeft = Math.floor((msLeft / 1000 / 60) % 60);
 
-  return (
-    <div className="max-w-4xl mx-auto px-4 py-12 space-y-8">
+   return (
+     <div className="max-w-4xl mx-auto px-4 py-12 space-y-8">
+       {/* BIG email verification banner (visible until verified) */}
+       {!isVerified && (
+         <Card className="border-2 border-yellow-400 bg-yellow-50 p-6">
+           <h2 className="text-xl font-semibold text-yellow-800">
+             Verify your email to unlock the app
+           </h2>
+           <p className="text-yellow-900 mt-1">
+             We’ve sent a verification link to your inbox. Once verified, refresh this page.
+           </p>
+           <p className="text-sm text-yellow-900 mt-2">
+             Tip: check your spam folder if you don’t see it.
+           </p>
+         </Card>
+       )}
 
       {/* Always‑on Upgrade Banner for non‑paying users */}
       {!userData.hasPaid && (
@@ -133,8 +139,15 @@ export default function Dashboard() {
         </h1>
 
         <div className="mt-6 flex flex-col sm:flex-row sm:space-x-4 space-y-4 sm:space-y-0">
-          {(isTrialActive || userData.hasPaid) && (
-            <Button type="primary" onClick={() => navigate('/setup')}>
+           {(isTrialActive || userData.hasPaid) && isVerified && (
+             <Button
+               type="primary"
+               onClick={() => {
+                 const p = localStorage.getItem('lastProfession');
+                 if (p) navigate(`/${p}/setup`);
+                 else navigate('/setup');
+               }}
+             >
               Start New Interview
             </Button>
           )}
