@@ -67,9 +67,9 @@ export default function HomePage() {
     {/* Step 1 */}
     <div className="grid md:grid-cols-2 gap-10 items-center">
       <div>
-        <h3 className="text-2xl font-semibold mb-2">Choose your interview type</h3>
+        <h3 className="text-2xl font-semibold mb-2">Choose your practice format</h3>
         <p className="text-gray-700">
-          Choose between a standard, interview-day experience or a custom session focused on specific questions.
+          Choose between a standard mock interview or a custom session where you pick the questions.
         </p>
       </div>
 
