@@ -69,7 +69,7 @@ export default function HomePage() {
       <div>
         <h3 className="text-2xl font-semibold mb-2">Choose your practice format</h3>
         <p className="text-gray-700">
-          Choose between a standard mock interview or a custom session where you pick the questions.
+          Choose between a standard mock interview or a custom session.
         </p>
       </div>
 
