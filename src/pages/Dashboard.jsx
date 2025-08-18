@@ -10,7 +10,7 @@ import Card from '../components/Card';
 
 export default function Dashboard() {
   const [userData, setUserData] = useState(null);
-  const [isVerified, setIsVerified] = useState(true);
+  const [isVerified, setIsVerified] = useState(false);
   const navigate = useNavigate();
 
   // Fetch user & Firestore record
@@ -85,17 +85,9 @@ export default function Dashboard() {
   }
 
   // Compute trial timings
-  const now = new Date();
-  const trialEnd = new Date(userData.trialExpiresAt);
-  const isTrialActive = now < trialEnd;
-  const msLeft = trialEnd - now;
-  const hoursLeft = Math.floor(msLeft / 1000 / 60 / 60);
-  const minutesLeft = Math.floor((msLeft / 1000 / 60) % 60);
-
-   return (
-     <div className="max-w-4xl mx-auto px-4 py-12 space-y-8">
-       {/* BIG email verification banner (visible until verified) */}
-       {!isVerified && (
+  if (!isVerified) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-12 space-y-8">
          <Card className="border-2 border-yellow-400 bg-yellow-50 p-6">
            <h2 className="text-xl font-semibold text-yellow-800">
              Verify your email to unlock the app
@@ -107,8 +99,19 @@ export default function Dashboard() {
              Tip: check your spam folder if you don’t see it.
            </p>
          </Card>
-       )}
+      </div>
+    );
+  }
 
+  const now = new Date();
+  const trialEnd = new Date(userData.trialExpiresAt);
+  const isTrialActive = now < trialEnd;
+  const msLeft = trialEnd - now;
+  const hoursLeft = Math.floor(msLeft / 1000 / 60 / 60);
+  const minutesLeft = Math.floor((msLeft / 1000 / 60) % 60);
+
+   return (
+     <div className="max-w-4xl mx-auto px-4 py-12 space-y-8">
       {/* Always‑on Upgrade Banner for non‑paying users */}
       {!userData.hasPaid && (
         <Card className="bg-gray-50 border border-gray-200 p-6 mb-6">
