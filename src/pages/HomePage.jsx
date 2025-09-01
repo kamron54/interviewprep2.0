@@ -114,15 +114,6 @@ export default function HomePage() {
             </div>
           </label>
         </div>
-
-        <button
-          type="button"
-          disabled
-          aria-disabled="true"
-          className="mt-4 w-full bg-blue-600 text-white py-2 px-4 rounded opacity-100"
-        >
-          Start Interview
-        </button>
       </div>
     </div>
 
