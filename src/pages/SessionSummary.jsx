@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { auth, db } from '../../firebase';
+import { doc, runTransaction, arrayUnion } from 'firebase/firestore';
 
 // Existing app utilities
 import { transcribeAudio, getFeedback } from '../ai/aiService';
@@ -94,6 +96,7 @@ export default function SessionSummary() {
   const navigate = useNavigate();
   const sessionData = location.state || {};
   const { recordings = [], profession, totalSessionTime = 0 } = sessionData; // profession = human-readable tag (e.g., "Dental")
+  const sessionId = sessionData?.sessionId || null;
   const totalTimeFormatted = useMemo(() => {
     const mins = Math.floor(totalSessionTime / 60);
     const secs = totalSessionTime % 60;
@@ -131,7 +134,51 @@ const overallAvg = useMemo(() => {
   return Math.round(sum / scoredItems.length);
 }, [scoredItems]);
 
-const improvement = 12;
+const [improvement, setImprovement] = useState(0);
+
+useEffect(() => {
+  // Only run after we've processed the whole session
+  if (results.length === 0) return;                 // wait for processing to finish
+  if (!Number.isFinite(overallAvg)) return;
+  if (!scoredItems.length) return; // nothing scored → don't write stats
+
+  const uid = auth.currentUser?.uid;
+  if (!uid) return;
+
+  const userRef = doc(db, 'users', uid);
+
+  runTransaction(db, async (tx) => {
+    const snap = await tx.get(userRef);
+    const data = snap.exists() ? snap.data() : {};
+
+    // Improvement = current - previous session avg
+    const prevSessionAvg = Number.isFinite(data.lastAverageScore) ? data.lastAverageScore : null;
+    setImprovement(prevSessionAvg == null ? 0 : Math.round(overallAvg - prevSessionAvg));
+
+    // If we don't have a sessionId, don't write aggregates (prevents double counts on refresh/deeplink)
+    if (!sessionId) {
+      return; 
+    }
+
+    // Idempotency guard
+    if (sessionId && Array.isArray(data.processedSessionIds) && data.processedSessionIds.includes(sessionId)) {
+      return;
+    }
+
+    const prevCount = Number.isFinite(data.sessionsCompleted) ? data.sessionsCompleted : 0;
+    const newCount = prevCount + 1;
+
+    const prevRolling = Number.isFinite(data.rollingAverageScore) ? data.rollingAverageScore : null;
+    const newRolling = prevRolling == null ? overallAvg : ((prevRolling * prevCount) + overallAvg) / newCount;
+
+    tx.update(userRef, {
+      sessionsCompleted: newCount,
+      lastAverageScore: overallAvg,
+      rollingAverageScore: newRolling,
+      ...(sessionId ? { processedSessionIds: arrayUnion(sessionId) } : {}),
+    });
+  }).catch(console.error);
+}, [overallAvg, sessionId, results.length]);
 
   // Copy transcript helper
   const copyTranscript = async (text) => {

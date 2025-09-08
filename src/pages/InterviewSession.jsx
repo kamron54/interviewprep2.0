@@ -28,6 +28,10 @@ export default function InterviewSession() {
   const [timeLimitReached, setTimeLimitReached] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [sessionElapsed, setSessionElapsed] = useState(0);
+  const [sessionId] = useState(() =>
+    (globalThis.crypto?.randomUUID?.() || String(Date.now()))
+  );
+
 
   // refs
   const videoRecorderRef = useRef(null);
@@ -260,7 +264,7 @@ export default function InterviewSession() {
       videoUrl: r.videoUrl || null,
       audioUrl: r.audioUrl || null,
     }));
-    navigate('../summary', { state: { recordings: serializable, profession: config.profession, totalSessionTime: sessionElapsed} });
+    navigate('../summary', { state: { recordings: serializable, profession: config.profession, totalSessionTime: sessionElapsed, sessionId,} });
   };
 
   const handleSkip = () => {
