@@ -126,33 +126,19 @@ export default function Dashboard() {
   const trialTimeLeft = computeTimeLeft(trialEnd);
   const paidDaysRemaining = subscriptionEndsAt ? daysLeft(subscriptionEndsAt) : null;
 
-  // ---- KPIs & lock --------------------------------------------------------
-  // real values with safe fallbacks
-  const realSessionsCompleted  = Number.isFinite(userData.sessionsCompleted) ? userData.sessionsCompleted : 0;
-  const realQuestionsPracticed = Number.isFinite(userData.usageCount) ? userData.usageCount : (Number.isFinite(userData.questionsPracticed) ? userData.questionsPracticed : 0);
-  const realAvgScore = Number.isFinite(userData.rollingAverageScore) ? Math.round(userData.rollingAverageScore) :
-                      (Number.isFinite(userData.lastAverageScore) ? Math.round(userData.lastAverageScore) : 0);
+  // ---- KPIs ---------------------------------------------------
+  const sessionsCompleted  = Number.isFinite(userData?.sessionsCompleted) ? userData.sessionsCompleted : 0;
+  const questionsPracticed = Number.isFinite(userData?.usageCount) ? userData.usageCount
+                          : Number.isFinite(userData?.questionsPracticed) ? userData.questionsPracticed
+                          : 0;
+  const averageScore = Number.isFinite(userData?.rollingAverageScore) ? Math.round(userData.rollingAverageScore)
+                    : Number.isFinite(userData?.lastAverageScore)    ? Math.round(userData.lastAverageScore)
+                    : 0;
 
-  // preserve your lock behavior, but don’t inject fake numbers when unlocked
   const kpis = [
-    {
-      label: 'Sessions Completed',
-      value: (userState === 'paid_active' || userState === 'free_trial_active') ? realSessionsCompleted : 2,
-      Icon: Trophy,
-      color: 'text-primary',
-    },
-    {
-      label: 'Questions Practiced',
-      value: (userState === 'paid_active' || userState === 'free_trial_active') ? realQuestionsPracticed : 10,
-      Icon: BookOpen,
-      color: 'text-medical-teal',
-    },
-    {
-      label: 'Average Score',
-      value: String((userState === 'paid_active' || userState === 'free_trial_active') ? realAvgScore : 78) + '%',
-      Icon: Target,
-      color: 'text-medical-blue',
-    },
+    { label: 'Sessions Completed',  value: sessionsCompleted,  Icon: Trophy,  color: 'text-primary' },
+    { label: 'Questions Practiced', value: questionsPracticed, Icon: BookOpen, color: 'text-medical-teal' },
+    { label: 'Average Score',       value: `${averageScore}%`, Icon: Target,   color: 'text-medical-blue' },
   ];
 
   const locked = !(userState === 'paid_active' || userState === 'free_trial_active');
