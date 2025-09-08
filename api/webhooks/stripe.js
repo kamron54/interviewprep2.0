@@ -42,9 +42,17 @@ export default async function handler(req, res) {
     }
 
     try {
-      console.log(`🔁 Writing hasPaid=true for UID=${uid}`);
+      const paidAt = new Date();
+      const subscriptionEndsAt = new Date(paidAt);
+      subscriptionEndsAt.setDate(subscriptionEndsAt.getDate() + 365);
+
+      console.log(`🔁 Writing hasPaid=true, paidAt, subscriptionEndsAt for UID=${uid}`);
       await db.collection('users').doc(uid).set(
-        { hasPaid: true },
+        {
+          hasPaid: true,
+          paidAt: admin.firestore.Timestamp.fromDate(paidAt),
+          subscriptionEndsAt: admin.firestore.Timestamp.fromDate(subscriptionEndsAt),
+        },
         { merge: true }
       );
       console.log('✅ Firestore write succeeded');

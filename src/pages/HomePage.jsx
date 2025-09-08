@@ -1,218 +1,143 @@
-import { Link } from "react-router-dom";
-import { useState, useEffect } from "react";
-import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "../../firebase";
-import Button from "../components/Button";
+import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../../firebase';
 import { useProfession } from '../professions/ProfessionContext.jsx';
 
 export default function HomePage() {
   const [user, setUser] = useState(null);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, setUser);
-    return () => unsubscribe();
-  }, []);
+  useEffect(() => { const unsub = onAuthStateChanged(auth, setUser); return () => unsub(); }, []);
 
   const ctx = useProfession?.();
-  const professionName = ctx?.config?.displayName; // e.g., "Dental School"
-  const heroTitle = ctx?.config?.hero?.title ?? 'Nail your interviews.';
-  const question = ctx?.config?.defaultQuestion || 'Tell me about yourself';
-  // Which profession are we in? (undefined on generic homepage)
-  const slug = ctx?.config?.slug;
-
-  // Step 3 lead-in sentence: generic, dental, medical
-  const baseFeedbackLead =
-    'Watch your recorded responses and receive instant, personalized feedback from an';
-  const step3Lead =
-    slug === 'dental'
-      ? `${baseFeedbackLead} AI model engineered for dental school admissions.`
-      : slug === 'medical'
-      ? `${baseFeedbackLead} AI model engineered for medical school admissions.`
-      : `${baseFeedbackLead} adaptive AI model.`;
-
-  // Example feedback body text under Step 3, tailored per profession
-  const feedbackText =
-    slug === 'dental'
-      ? 'Your response showed passion for dentistry and a clear personal journey. Try to include more specific long-term goals and structured examples.'
-      : slug === 'medical'
-      ? 'Your response showed passion for healthcare and a clear personal journey. Try to include more specific long-term goals and structured examples.'
-      : 'Good overview. Sharpen it with a concise arc: background → strengths → one concrete example of impact. Finish with what you’re aiming for next.';
-
+  const heroTitle = ctx?.config?.hero?.title || 'Ace your healthcare school interviews.';
+  const defaultSetupHref = ctx?.slug ? `/${ctx.slug}/setup` : '/dental/setup';
+  const defaultResourcesHref = ctx?.slug ? `/${ctx.slug}/resources` : '/dental/resources';
 
   return (
-    <div className="bg-white text-gray-900 font-sans">
+    <main className="">
       {/* Hero */}
-      <section className="text-center px-6 py-20 bg-gray-50">
-        <h1 className="text-4xl font-bold mb-4">{heroTitle}</h1>
-
-        <p className="text-lg mb-6">
-          Practice mock interviews and get instant feedback.
-        </p>
-        {user ? (
-          <Link to="/dashboard">
-            <Button type="primary">Start New Interview</Button>
-          </Link>
-        ) : (
-          <Link to="/signup">
-            <Button type="primary">Start Free 24-Hour Trial</Button>
-          </Link>
-        )}
-      </section>
-
-      {/* How It Works Section */}
-<section className="px-6 py-16 bg-white max-w-6xl mx-auto">
-  <h2 className="text-3xl font-bold text-center mb-12">How it works</h2>
-  <div className="space-y-20">
-    
-    {/* Step 1 */}
-    <div className="grid md:grid-cols-2 gap-10 items-center">
-      <div>
-        <h3 className="text-2xl font-semibold mb-2">Choose your practice format</h3>
-        <p className="text-gray-700">
-          Choose between a standard mock interview or a custom session.
-        </p>
-      </div>
-
-      {/* Mock of the Setup UI (non-interactive preview) */}
-      <div className="bg-gray-50 p-6 rounded-lg shadow-md border w-full max-w-md mx-auto">
-        <div className="space-y-2">
-        </div>
-
-        {/* Stacked radio cards (preview only) */}
-        <div className="space-y-3 mt-2">
-          {/* Standard (pre-selected look) */}
-          <label className="flex items-center p-4 border rounded-lg cursor-default pointer-events-none">
-            <input
-              type="radio"
-              name="previewInterviewType"
-              className="mr-3 h-4 w-4 text-blue-600"
-              checked
-              readOnly
-            />
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(60%_60%_at_50%_0%,rgba(13,148,136,0.15),transparent)]" />
+        <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+          <div className="grid items-center gap-10 md:grid-cols-2">
             <div>
-              <p className="font-medium text-gray-900">Standard</p>
-              <p className="text-sm text-gray-600">
-                Questions are generated as you go.
+              <h1 className="text-balance text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl">
+                {heroTitle}
+              </h1>
+              <p className="mt-4 text-lg text-gray-600">
+                Practice with mock interviews designed specifically for your profession. Get instant, actionable feedback and build confidence for your big day.
               </p>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <Link to={user ? defaultSetupHref : '/signup'} className="rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800">
+                  {user ? 'Start a practice session' : 'Create free account'}
+                </Link>
+              </div>
             </div>
-          </label>
-
-          {/* Custom (unselected look) */}
-          <label className="flex items-center p-4 border rounded-lg cursor-default">
-            <input
-              type="radio"
-              name="previewInterviewType"
-              className="mr-3 h-4 w-4 text-blue-600"
-              disabled
-              readOnly
-            />
-            <div>
-              <p className="font-medium text-gray-900">Custom</p>
-              <p className="text-sm text-gray-600">
-                Choose or create specific questions beforehand.
-              </p>
+            {/* Placeholder preview card */}
+            <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+              <div className="rounded-xl border bg-gray-50 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="h-2 w-24 rounded bg-gray-300" />
+                  <div className="h-2 w-8 rounded bg-gray-300" />
+                </div>
+                <div className="mt-6 space-y-3">
+                  <div className="h-3 w-3/4 rounded bg-gray-300" />
+                  <div className="h-3 w-2/3 rounded bg-gray-200" />
+                  <div className="h-3 w-1/2 rounded bg-gray-200" />
+                </div>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <div className="rounded-lg border p-3">
+                  <div className="h-3 w-2/3 rounded bg-gray-200" />
+                  <div className="mt-2 h-2 w-1/2 rounded bg-gray-100" />
+                </div>
+                <div className="rounded-lg border p-3">
+                  <div className="h-3 w-2/3 rounded bg-gray-200" />
+                  <div className="mt-2 h-2 w-1/2 rounded bg-gray-100" />
+                </div>
+              </div>
             </div>
-          </label>
-        </div>
-      </div>
-    </div>
-
-    {/* Step 2 */}
-    <div className="grid md:grid-cols-2 gap-10 items-center md:flex-row-reverse">
-      <div>
-        <h3 className="text-2xl font-semibold mb-2">Practice with real questions</h3>
-        <p className="text-gray-700">
-          Respond to common interview questions in a simulated environment, just like the real thing.
-        </p>
-      </div>
-      <div className="relative rounded-lg overflow-hidden shadow-md border w-full max-w-md mx-auto bg-black aspect-video">
-        <img
-          src="/images/step2-user.jpg"
-          alt="Interview session user"
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded">Recording</div>
-        <div className="absolute bottom-2 left-2 text-white text-sm px-2">{question}</div>
-      </div>
-    </div>
-
-    {/* Step 3 */}
-    <div className="grid md:grid-cols-2 gap-10 items-center">
-      <div>
-        <h3 className="text-2xl font-semibold mb-2">Review your answers & get instant feedback</h3>
-        <p className="text-gray-700">{step3Lead}</p>
-      </div>
-      <div className="bg-gray-50 p-6 rounded-lg shadow-md border w-full max-w-md mx-auto space-y-4 text-sm">
-        <div>
-          <p className="font-semibold">{question}</p>
-          <div className="mt-1">
-            <button 
-              type="button"
-              disabled
-              aria-disabled="true"
-            className="text-blue-600 underline text-xs">Watch Your Answer</button>
           </div>
         </div>
-        <div>
-          <p className="font-semibold mb-1">Feedback</p>
-          <p className="text-gray-700">{feedbackText}</p>
+      </section>
+
+      {/* Features  */}
+      <section id="features" className="border-t bg-gray-50">
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+          <h2 className="text-4xl font-semibold tracking-tight text-gray-900 text-center md:text-4xl">
+            Everything You Need to Succeed
+          </h2>
+          <p className="mt-3 mx-auto text-center text-lg text-gray-600 text-balance max-w-prose sm:max-w-2xl md:max-w-3xl lg:max-w-4xl">
+            Comprehensive interview preparation tools modeled after real interview expectations across healthcare programs.
+          </p>
+
+          <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-3">
+            {[
+              { title: 'Profession-Specific Questions', body: 'Curated questions for dental, medical, PA, pharmacy, and PT school interviews.' },
+              { title: 'Video Practice Sessions', body: 'Record yourself answering questions and review your body language and delivery.' },
+              { title: 'Instant Feedback', body: 'Get detailed analysis of your responses with personalized improvement suggestions.' },
+              { title: 'Customizable Scenarios', body: 'Tailor your practice by choosing the question focus, recording style, and session length.' },
+              { title: 'Progress Tracking', body: 'Monitor your improvement over time with detailed analytics and performance insights.' },
+              { title: 'Secure & Private', body: 'Your practice sessions are encrypted and stored securely with full privacy protection.' },
+            ].map((f) => (
+              <div key={f.title} className="rounded-2xl border bg-white p-6">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 shrink-0 rounded-md bg-gradient-to-br from-teal-500 to-blue-600" />
+                  <h3 className="text-base font-semibold text-gray-900">{f.title}</h3>
+                </div>
+                <p className="mt-2 text-sm text-gray-600">{f.body}</p>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
-    </div>
-  </div>
-</section>
+      </section>
 
+      {/* How it works */}
+      <section id="how-it-works" className="border-t bg-white">
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+          <h2 className="text-4xl font-semibold tracking-tight text-gray-900 text-center">
+            How it works
+          </h2>
 
-      {/* Why It Works */}
-<section className="bg-gray-50 px-6 py-20 max-w-6xl mx-auto">
-  <h2 className="text-3xl font-bold mb-6 text-center">Why It Works</h2>
-  <p className="text-lg text-gray-700 max-w-3xl mx-auto text-center">
-    Watching yourself answer questions is uncomfortable — but it’s the fastest way to improve. When I was applying to dental school, I was nervous about interviews too. Practicing with real questions and watching my answers back helped me walk into every interview feeling confident.
-  </p>
-</section>
+          <ol className="mt-10 grid gap-6 md:grid-cols-3">
+            {[
+              { step: '1', title: 'Choose Your Format', body: 'Select between standard mock interviews or create custom sessions tailored to your needs.' },
+              { step: '2', title: 'Practice Answering Questions', body: 'Record structured responses in realistic, interview-style flows.' },
+              { step: '3', title: 'Review and Improve', body: 'Use our instant personalized feedback to improve your delivery immediately.' },
+            ].map((s) => (
+              <li key={s.step} className="rounded-2xl border p-6">
+                <div className="flex items-center gap-3">
+                  <div className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-gray-900 text-xs font-medium text-white">
+                    {s.step}
+                  </div>
+                  <div className="text-base font-semibold text-gray-900">{s.title}</div>
+                </div>
+                <p className="mt-2 text-sm text-gray-600">{s.body}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
 
-{/* FAQ */}
-<section id="faq" className="bg-white px-6 py-20 max-w-6xl mx-auto border-t border-gray-200">
-  <h2 className="text-3xl font-bold mb-8 text-center">FAQ</h2>
-  <ul className="space-y-6 text-lg max-w-3xl mx-auto">
-    <li>
-      <p><strong>Q:</strong> Do I need to pay?</p>
-      <p><strong>A:</strong> Nope — you get 24 hours free, no credit card required.</p>
-    </li>
-    <li>
-      <p><strong>Q:</strong> What if I don't like the existing interview questions?</p>
-      <p><strong>A:</strong> You can create your own custom interviews by writing in questions and/or picking from our curated pool of questions. </p>
-    </li>
-    <li>
-      <p><strong>Q:</strong> What if I want unlimited access?</p>
-      <p><strong>A:</strong> You can purchase 1 year of unlimited use for $19. </p>
-    </li>
-    <li>
-      <p><strong>Q:</strong> What if I can’t afford to pay? </p>
-      <p><strong>A:</strong> Shoot me an email and I can extend your free limited access or give you a discount code for unlimited. I built this website to help others and I want it to be accessible to everyone. </p>
-    </li>
-  </ul>
-</section>
-
-{/* About */}
-<section id="about" className="bg-gray-50 px-6 py-20 max-w-6xl mx-auto border-t border-gray-200">
-  <h2 className="text-3xl font-bold mb-8 text-center">About Me</h2>
-  <div className="flex flex-col md:flex-row items-center space-y-6 md:space-y-0 md:space-x-6 max-w-3xl mx-auto text-lg text-gray-700">
-    <img
-      src="/images/kamron.jpg"
-      alt="Kamron"
-      className="w-28 h-28 rounded-full shadow-md object-cover"
-    />
-    <div className="flex-1 space-y-4">
-      <p>
-        My name is Kamron, and I’m a student at UCSF School of Dentistry. During my application process, I participated in a handful of interviews and was accepted to schools such as UPenn, Tufts, and UCSF. I built InterviewPrep because I know how intimidating the process can be — and I wanted to create a tool I wish I had when I was applying.
-      </p>
-      <p>
-        If you ever want advice, feel free to reach out. I also offer 1-on-1 mock interviews for $75/hr.
-      </p>
-    </div>
-  </div>
-</section>
-    </div>
+      {/* CTA */}
+      <section className="border-t bg-gray-50">
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+          <h2 className="text-4xl font-semibold tracking-tight text-gray-900 text-center md:text-4xl">
+            Ready to practice?
+          </h2>
+          <p className="mt-3 mx-auto text-center text-lg text-gray-600 text-balance max-w-prose sm:max-w-2xl md:max-w-3xl lg:max-w-4xl">
+            Build confidence with structured reps and clear guidance.
+          </p>
+          <div className="mt-6 flex justify-center">
+            <Link
+              to={user ? defaultSetupHref : '/signup'}
+              className="rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800"
+            >
+              {user ? 'Start a session' : 'Create free account'}
+            </Link>
+          </div>
+        </div>
+      </section>
+    </main>
   );
 }

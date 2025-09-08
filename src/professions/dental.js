@@ -1,6 +1,6 @@
 const dental = {
   slug: "dental",
-  displayName: "Dental School",
+  displayName: "Dental School Admissions",
   hero: {
     title: "Nail Your Dental School Interviews.",
   },

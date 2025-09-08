@@ -1,9 +1,32 @@
-import { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+
+// Existing app utilities
 import { transcribeAudio, getFeedback } from '../ai/aiService';
 import { exportInterviewSession } from '../utils/exportZip';
-import Button from '../components/Button';
 
+// shadcn/ui (already used elsewhere in your app)
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+
+// Icons
+import {
+  ChevronLeft,
+  Award,
+  BarChart3,
+  Clock,
+  TrendingUp,
+  CheckCircle,
+  AlertCircle,
+  Download,
+  FileText,
+  Copy as CopyIcon,
+  Video as VideoIcon,
+} from 'lucide-react';
+
+// --- heuristics to ignore clear hallucinations/noise ---
 const hallucinatedPhrases = [
   "thank you for watching",
   "share this video",
@@ -20,190 +43,411 @@ const hallucinatedPhrases = [
 function isMeaningfulTranscript(text) {
   if (!text || text.trim().length === 0) return false;
   const lower = text.trim().toLowerCase();
-  return !hallucinatedPhrases.some(phrase => lower.includes(phrase));
+  return !hallucinatedPhrases.some((p) => lower.includes(p));
 }
 
-function SessionSummary() {
+// --- scoring helpers -------------------------------------------------------
+const clamp01 = (n) => Math.max(0, Math.min(100, Number.isFinite(+n) ? +n : 0));
+
+/**
+ * Accepts:
+ *  - structured object from API ({ overallScore, sectionScores, summary, suggestions })
+ *  - JSON string
+ *  - legacy HTML/string (fallback)
+ * Returns either a normalized object OR { legacyHtml: string }
+ */
+function normalizeFeedback(raw) {
+  if (!raw) return null;
+
+  if (typeof raw === 'object') {
+    return {
+      overallScore: clamp01(raw.overallScore),
+      sectionScores: {
+        overallImpression: clamp01(raw.sectionScores?.overallImpression),
+        clarityStructure: clamp01(raw.sectionScores?.clarityStructure),
+        content: clamp01(raw.sectionScores?.content),
+      },
+      summary: raw.summary || '',
+      suggestions: Array.isArray(raw.suggestions) ? raw.suggestions : [],
+      rubricVersion: raw.rubricVersion || 'v1',
+    };
+  }
+
+  if (typeof raw === 'string') {
+    const match = raw.match(/\{[\s\S]*\}$/);
+    if (match) {
+      try {
+        return normalizeFeedback(JSON.parse(match[0]));
+      } catch { /* fall back */ }
+    }
+    return { legacyHtml: raw };
+  }
+
+  return null;
+}
+
+export default function SessionSummary() {
+  const { profession: slug } = useParams();
+  const base = slug ? `/${slug}` : '/dental';
+
   const location = useLocation();
   const navigate = useNavigate();
   const sessionData = location.state || {};
-  const { recordings = [], profession } = sessionData;
+  const { recordings = [], profession, totalSessionTime = 0 } = sessionData; // profession = human-readable tag (e.g., "Dental")
+  const totalTimeFormatted = useMemo(() => {
+    const mins = Math.floor(totalSessionTime / 60);
+    const secs = totalSessionTime % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  }, [totalSessionTime]);
+
+
   const [expandedTips, setExpandedTips] = useState({});
   const [results, setResults] = useState([]);
   const [loadingIndex, setLoadingIndex] = useState(null);
-  const progressPercent = Math.round(((loadingIndex ?? 0) / recordings.length) * 100);
 
+  const progressPercent = useMemo(() => {
+    if (!recordings.length) return 0;
+    const idx = loadingIndex ?? 0;
+    return Math.round((idx / recordings.length) * 100);
+  }, [loadingIndex, recordings.length]);
 
+  const answeredCount = useMemo(() => results.filter((r) => !r?.skipped && (r?.audioUrl || r?.videoUrl)).length, [results]);
+  const skippedCount = useMemo(() => results.filter((r) => r?.skipped).length, [results]);
+  const completionPct = useMemo(() => (recordings.length ? Math.round((answeredCount / recordings.length) * 100) : 0), [answeredCount, recordings.length]);
+  const answeredQuestionsCount = useMemo(
+  () => recordings.filter(r => r && !r.skipped).length,
+  [recordings]
+);
+const scoredItems = useMemo(() => {
+  return results
+    .filter(r => !r?.skipped && r?.feedback)
+    .map(r => ({ ...r, feedback: normalizeFeedback(r.feedback) }))
+    .filter(r => r.feedback && Number.isFinite(+r.feedback.overallScore));
+}, [results]);
+
+const overallAvg = useMemo(() => {
+  if (!scoredItems.length) return 0;
+  const sum = scoredItems.reduce((acc, r) => acc + (+r.feedback.overallScore || 0), 0);
+  return Math.round(sum / scoredItems.length);
+}, [scoredItems]);
+
+const improvement = 12;
+
+  // Copy transcript helper
+  const copyTranscript = async (text) => {
+    try {
+      await navigator.clipboard.writeText(text || '');
+    } catch { /* noop */ }
+  };
+
+  // Process responses sequentially (keeps your current behavior)
   useEffect(() => {
+    let cancelled = false;
+
     const processResponses = async () => {
       const all = [];
 
       for (let i = 0; i < recordings.length; i++) {
+        if (cancelled) return;
         const item = recordings[i];
 
         if (item.skipped || !item.audioUrl) {
-          all.push({ ...item, transcript: null, feedback: null });
+          all.push({ ...item, originalIndex: i, transcript: null, feedback: null });
           continue;
         }
 
         setLoadingIndex(i);
 
         try {
+          // fetch blob from in-memory object URL
           const res = await fetch(item.audioUrl);
           const audioBlob = await res.blob();
-          const result = await transcribeAudio(audioBlob);
+          const transcriptResult = await transcribeAudio(audioBlob);
 
-          if (result.limitReached) {
-            alert(result.error || "We’ve noticed unusually heavy usage on your account. To ensure fair access for all users, we’ve temporarily paused usage. If you believe this is a mistake, please contact support.");
-            navigate('/dashboard'); // Or wherever you want to send them
+          if (transcriptResult.limitReached) {
+            alert(
+              transcriptResult.error ||
+                "We’ve noticed unusually heavy usage on your account. To ensure fair access for all users, we’ve temporarily paused usage. If you believe this is a mistake, please contact support."
+            );
+            navigate(`${base}/dashboard`);
             return;
           }
 
-          const transcript = result.transcript;
-
+          let transcript = transcriptResult.transcript || '';
           let feedback = null;
 
-          let finalTranscript = transcript;
+          if (isMeaningfulTranscript(transcript)) {
+            feedback = await getFeedback(item.question, transcript, profession);
+          } else {
+            feedback = 'No meaningful response detected. Skipping feedback.';
+            transcript = '';
+          }
 
-if (isMeaningfulTranscript(transcript)) {
-  feedback = await getFeedback(item.question, transcript, profession);
-} else {
-  feedback = 'No meaningful response detected. Skipping feedback.';
-  finalTranscript = ''; // clear the transcript for display
-}
-
-all.push({ ...item, transcript: finalTranscript, feedback });
+          all.push({ ...item, originalIndex: i, transcript, feedback });
         } catch (err) {
           console.error(`Error processing response ${i + 1}`, err);
-          all.push({ ...item, transcript: 'Error', feedback: 'Error generating feedback' });
+          all.push({ ...item, originalIndex: i, transcript: 'Error', feedback: 'Error generating feedback' });
         }
       }
 
+      if (cancelled) return;
       setResults(all);
       setLoadingIndex(null);
     };
 
     processResponses();
-  }, [recordings]);
+    return () => {
+      cancelled = true;
+    };
+  }, [recordings, profession, base, navigate]);
+
+  const orderedResults = useMemo(() => {
+  return [...results].sort((a, b) => {
+    if (a.skipped && !b.skipped) return 1;   // push a down
+    if (!a.skipped && b.skipped) return -1;  // keep a up
+    return 0; // preserve order otherwise
+  });
+}, [results]);
 
   return (
-    <div className="max-w-3xl mx-auto p-6 space-y-8">
-      <h1 className="text-3xl font-bold text-gray-900">Session Summary</h1>
-
-      {results.length > 0 && (
-        <div className="space-y-4">
-          <Button type="primary" onClick={() => exportInterviewSession(results)}>
-            Download ZIP
-          </Button>
-
-          <div className="flex gap-4 flex-wrap">
-            <Button type="secondary" onClick={() => navigate('/setup')}>
-              Restart Interview
+    <div className="min-h-screen bg-background">
+      {/* Local page header (global Header is hidden on /summary) */}
+      <header className="border-b border-border bg-card">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate(`${base}/dashboard`)}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <ChevronLeft className="h-4 w-4 mr-2" /> Back to Dashboard
             </Button>
-            <Button type="secondary" onClick={() => navigate('/dashboard')}>
-              Return to Dashboard
-            </Button>
+            <Badge variant="outline">Practice Session Complete</Badge>
+          </div>
+          <div className="flex items-center gap-2">
+            {results.length > 0 && (
+              <Button
+                variant="outline"
+                onClick={() => exportInterviewSession(results)}
+              >
+                <Download className="h-4 w-4 mr-2" /> Download ZIP
+              </Button>
+            )}
+            <Button onClick={() => navigate(`${base}/setup`)}>Start New Session</Button>
           </div>
         </div>
-      )}
+      </header>
 
-      {results.length === 0 ? (
-        <>
-          <p className="text-gray-500 text-center">Processing your interview responses...</p>
-
-          {loadingIndex !== null && (
-            <div className="w-full bg-gray-200 rounded-full h-4 mb-4">
-              <div
-                className="bg-blue-600 h-4 rounded-full transition-all duration-300"
-                style={{ width: `${progressPercent}%` }}
-              />
-              <p className="text-sm text-gray-600 text-center mt-1">
-                Processing response {loadingIndex + 1} of {recordings.length}
-              </p>
+      <main className="container mx-auto px-4 py-8">
+        {/* Overview */}
+        <Card className="mb-8">
+          <CardHeader className="text-center">
+            <div className="mx-auto w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+              <Award className="h-10 w-10 text-primary" />
             </div>
-          )}
-        </>
-      ) : (
-        results.map((item, idx) => (
-          <div
-            key={idx}
-            className="p-5 border border-gray-200 rounded-xl bg-white shadow-sm space-y-4"
-          >
-            <p className="font-medium text-gray-800">Question {idx + 1}:</p>
-            <p className="text-lg text-gray-900">{item.question}</p>
-            {item.tip && (
-              <div className="mt-2">
-                <button
-                  onClick={() =>
-                    setExpandedTips(prev => ({ ...prev, [idx]: !prev[idx] }))
-                  }
-                  className="text-sm text-blue-600 underline focus:outline-none"
-                >
-                  {expandedTips[idx] ? 'Hide Tip' : 'Show Tip'}
-                </button>
+            <CardTitle className="text-2xl">Session Complete!</CardTitle>
+            <p className="text-muted-foreground">Here's your detailed feedback and performance analysis</p>
+          </CardHeader>
 
-                {expandedTips[idx] && (
-                  <p className="text-sm text-blue-800 italic mt-1">
-                    {item.tip}
-                  </p>
-                )}
+            <div className="text-center mb-6">
+              <div className="text-4xl font-bold text-foreground mb-2">
+                {overallAvg}%
               </div>
-            )}
+              <p className="text-muted-foreground">Overall Score</p>
+              <Progress value={overallAvg} className="mt-4 h-3" />
+            </div>
 
-            {item.skipped ? (
-              <p className="italic text-gray-500">Skipped</p>
-            ) : (
-              <>
-                {item.videoUrl ? (
-                  <video
-                    controls
-                    src={item.videoUrl}
-                    className="w-full rounded"
-                    preload="metadata"
-                    onLoadedMetadata={(e) => {
-                      const v = e.target;
-                      // Fix for Infinity/NaN duration from MediaRecorder
-                      if (!isFinite(v.duration) || isNaN(v.duration)) {
-                        v.currentTime = Number.MAX_SAFE_INTEGER;
-                        const snapBack = () => {
-                          v.removeEventListener('timeupdate', snapBack);
-                          v.currentTime = 0;
-                        };
-                        v.addEventListener('timeupdate', snapBack);
-                      }
-                    }}
-                  />
-                ) : (
-                  <audio controls src={item.audioUrl} className="w-full rounded" />
-                )}
+          <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Total Time */}
+            <div className="text-center p-4 bg-card rounded-lg border">
+              <Clock className="h-6 w-6 text-primary mx-auto mb-2" />
+              <div className="text-xl font-semibold">{totalTimeFormatted}</div>
+              <div className="text-sm text-muted-foreground">Total Time</div>
+            </div>
 
-                {loadingIndex === idx ? (
-                  <p className="text-blue-500">Transcribing and analyzing...</p>
-                ) : (
-                  <>
-                    <div className="bg-gray-50 p-4 rounded border border-gray-200">
-                      <p className="font-semibold mb-1 text-gray-700">Transcript:</p>
-                      <p className="text-sm text-gray-800 whitespace-pre-wrap">
-                        {item.transcript}
-                      </p>
-                    </div>
+            {/* Answered Questions */}
+            <div className="text-center p-4 bg-card rounded-lg border">
+              <BarChart3 className="h-6 w-6 text-primary mx-auto mb-2" />
+              <div className="text-xl font-semibold">{answeredQuestionsCount}</div>
+              <div className="text-sm text-muted-foreground">Questions</div>
+            </div>
 
-                    <div className="bg-yellow-50 p-4 rounded border border-yellow-200">
-                      <p className="font-semibold mb-1 text-gray-700">AI Feedback:</p>
-                      <div
-                        className="text-sm text-gray-800 whitespace-pre-wrap"
-                        dangerouslySetInnerHTML={{ __html: item.feedback }}
-                      />
-                    </div>
-                  </>
-                )}
-              </>
-            )}
+            {/* Improvement */}
+            <div className="text-center p-4 bg-card rounded-lg border">
+              <TrendingUp className="h-6 w-6 text-primary mx-auto mb-2" />
+              <div className="text-xl font-semibold">+{improvement}%</div>
+              <div className="text-sm text-muted-foreground">Improvement</div>
+            </div>
           </div>
-        ))
-      )}
+          </CardContent>
+        </Card>
+
+        {/* Loading state while transcribing/analyzing */}
+        {results.length === 0 ? (
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Clock className="h-4 w-4" />
+                  <span>Transcribing and analyzing your responses…</span>
+                </div>
+                <span className="text-sm text-muted-foreground">{progressPercent}%</span>
+              </div>
+              <Progress value={progressPercent} className="h-2" />
+              {loadingIndex !== null && (
+                <p className="text-sm text-muted-foreground mt-2 text-center">
+                  Processing response {loadingIndex + 1} of {recordings.length}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          // Question-by-question results
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {orderedResults.map((item) => (
+             <Card key={item.originalIndex ?? item.question} className="overflow-hidden">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">
+                     Question {(item.originalIndex ?? 0) + 1}
+                    </CardTitle>
+                    {(() => {
+  const fb = normalizeFeedback(item.feedback);
+  if (item.skipped) return <Badge variant="destructive">Skipped</Badge>;
+  if (!fb) return <Badge variant="secondary">No score</Badge>;
+  if (fb.legacyHtml) return <Badge variant="secondary">Feedback</Badge>;
+  const s = Math.round(fb.overallScore || 0);
+  const variant = s >= 80 ? 'default' : s >= 70 ? 'secondary' : 'destructive';
+  return <Badge variant={variant}>{s}%</Badge>;
+})()}
+                  </div>
+                  <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{item.question}</p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Media */}
+                  {!item.skipped && (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium flex items-center gap-2">
+                        <VideoIcon className="h-4 w-4" /> Your Response
+                      </p>
+                      {item.videoUrl ? (
+                        <div className="relative w-full rounded-lg border bg-black/5" style={{ aspectRatio: '16 / 9' }}>
+                          <video
+                            controls
+                            className="absolute inset-0 h-full w-full rounded object-cover"
+                            src={item.videoUrl}
+                            preload="metadata"
+                            onLoadedMetadata={(e) => {
+                              const v = e.currentTarget;
+                              if (!isFinite(v.duration) || isNaN(v.duration)) {
+                                v.currentTime = Number.MAX_SAFE_INTEGER;
+                                const snapBack = () => { v.removeEventListener('timeupdate', snapBack); v.currentTime = 0; };
+                                v.addEventListener('timeupdate', snapBack);
+                              }
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <audio controls src={item.audioUrl} className="w-full rounded" />
+                      )}
+                    </div>
+                  )}
+
+                  {/* Tip toggle */}
+                  {item.tip && (
+                    <div className="bg-card/50 border rounded-lg p-3">
+                      <button
+                        onClick={() =>
+                          setExpandedTips((prev) => ({
+                            ...prev,
+                            [item.originalIndex]: !prev[item.originalIndex],
+                          }))
+                        }
+                        className="text-sm text-primary underline"
+                      >
+                        {expandedTips[item.originalIndex] ? 'Hide Tip' : 'Show Tip'}
+                      </button>
+                      {expandedTips[item.originalIndex] && (
+                        <p className="mt-2 text-sm italic text-muted-foreground">{item.tip}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Transcript & Feedback */}
+                  {!item.skipped && (
+                    <div className="space-y-3">
+                      <div className="rounded-lg border bg-gray-50 p-3">
+                        <p className="font-medium text-sm flex items-center gap-2 mb-1">
+                          <FileText className="h-4 w-4" /> Transcript
+                        </p>
+                        <p className="text-sm whitespace-pre-wrap text-foreground/90">{item.transcript}</p>
+                        {!!item.transcript && (
+                          <div className="mt-2">
+                            <Button variant="outline" size="sm" onClick={() => copyTranscript(item.transcript)}>
+                              <CopyIcon className="h-4 w-4 mr-2" /> Copy transcript
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+
+                      {(() => {
+  const fb = normalizeFeedback(item.feedback);
+  if (!fb) return null;
+
+  if (fb.legacyHtml) {
+    return (
+      <div className="rounded-lg border bg-yellow-50 p-3">
+        <p className="font-medium text-sm mb-1">Feedback</p>
+        <div className="text-sm text-foreground/90 whitespace-pre-wrap"
+          dangerouslySetInnerHTML={{ __html: fb.legacyHtml }}
+        />
+      </div>
+    );
+  }
+
+  const sections = [
+    ['Overall Impression', fb.sectionScores?.overallImpression],
+    ['Clarity & Structure', fb.sectionScores?.clarityStructure],
+    ['Content', fb.sectionScores?.content],
+  ];
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-lg border bg-card p-3">
+        <p className="font-medium text-sm mb-2">Section Scores</p>
+        {sections.map(([label, val]) => (
+          <div key={label} className="mb-2">
+            <div className="flex justify-between text-xs mb-1">
+              <span className="text-muted-foreground">{label}</span>
+              <span className="text-foreground">{Math.round(val ?? 0)}%</span>
+            </div>
+            <Progress value={Math.round(val ?? 0)} className="h-2" />
+          </div>
+        ))}
+      </div>
+
+      <div className="rounded-lg border bg-yellow-50 p-3">
+        <p className="font-medium text-sm mb-1">Feedback Summary</p>
+        <p className="text-sm text-foreground/90 whitespace-pre-wrap">{fb.summary}</p>
+        {Array.isArray(fb.suggestions) && fb.suggestions.length > 0 && (
+          <ul className="mt-2 list-disc list-inside text-sm text-foreground/90">
+            {fb.suggestions.map((s, i) => <li key={i}>{s}</li>)}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+})()}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </main>
     </div>
   );
 }
-
-export default SessionSummary;

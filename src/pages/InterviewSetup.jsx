@@ -46,7 +46,8 @@ function InterviewSetup() {
     config.isCustom = true; // Optional, in case you want to check for it later
   }
 
-  navigate("/prep", { state: config });
+  const target = `/${professionSlug || 'dental'}/session`;
+  navigate(target, { state: { config } });
 };
 
 useEffect(() => {

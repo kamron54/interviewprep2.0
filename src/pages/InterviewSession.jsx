@@ -1,238 +1,218 @@
+// src/pages/InterviewSession.jsx
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getMediaStream, getStoredMediaStream, clearStoredMediaStream } from '../mediaStore';
 import { db } from '../../firebase';
 import { collection, getDocs, query, where } from 'firebase/firestore';
-import Button from '../components/Button';
 
-function InterviewSession() {
+// Lovable / shadcn-ui
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { ChevronLeft, Clock, Mic, MicOff, SkipForward, CheckCircle2, Camera } from 'lucide-react';
+
+export default function InterviewSession() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { config } = location.state || {};
+  const { config = {} } = location.state || {};
   const isVideo = config.mode === 'video';
 
+  // state
   const [stream, setStream] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [questionIndex, setQuestionIndex] = useState(0);
-  const [isCountingDown, setIsCountingDown] = useState(true);
-  const [count, setCount] = useState(5);
   const [isRecording, setIsRecording] = useState(false);
   const [recordings, setRecordings] = useState([]);
   const [status, setStatus] = useState('');
-  const [showConfirmSkip, setShowConfirmSkip] = useState(false);
+  const [timeLimitReached, setTimeLimitReached] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const [sessionElapsed, setSessionElapsed] = useState(0);
 
+  // refs
   const videoRecorderRef = useRef(null);
   const audioRecorderRef = useRef(null);
   const videoChunksRef = useRef([]);
   const audioChunksRef = useRef([]);
-  const videoRef = useRef(null); // ✅ for reliable preview
-
-  const [timeLimitReached, setTimeLimitReached] = useState(false);
+  const videoRef = useRef(null);
   const recordingTimerRef = useRef(null);
 
-  const handleSkipClick = () => {
-    // Consider it "has a recording" if this question already has a non-skipped entry
-    const hasRecordingForThisQuestion =
-      !!recordings[questionIndex] && recordings[questionIndex].skipped !== true;
-
-    if (hasRecordingForThisQuestion) {
-      setShowConfirmSkip(true);
-    } else {
-      // No recording yet — skip immediately (old behavior)
-      handleSkip();
-    }
-  };
-
-  const confirmDiscardAndSkip = () => {
-    setShowConfirmSkip(false);
-    handleSkip(); // this will overwrite the current slot with skipped
-  };
-
-  const cancelDiscard = () => {
-    setShowConfirmSkip(false);
-  };
-
+  // elapsed timer
   useEffect(() => {
-    if (isCountingDown && count > 0) {
-      const timer = setTimeout(() => setCount(c => c - 1), 1000);
-      return () => clearTimeout(timer);
-    }
+    if (!isRecording) return;
+    const id = setInterval(() => setElapsed(t => t + 1), 1000);
+    return () => clearInterval(id);
+  }, [isRecording]);
 
-    if (count === 0 && isCountingDown) {
-      startRecording();
-      setIsCountingDown(false);
-    }
-  }, [count, isCountingDown]);
+  // session-wide elapsed timer (runs for the whole page/session)
+  useEffect(() => {
+    const id = setInterval(() => setSessionElapsed(t => t + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
 
-    useEffect(() => {
-      const existing = getStoredMediaStream();
-      if (existing && existing.getTracks().some(t => t.readyState === 'live')) {
-        setStream(existing);
-        if (videoRef.current && config.mode === 'video') {
-          videoRef.current.srcObject = existing;
-        }
+  // QUESTIONS: Big-3 ordering + random (kept from your original)
+  useEffect(() => {
+    const fetchQuestions = async () => {
+      if (config.questions && Array.isArray(config.questions)) {
+        setQuestions(config.questions);
         return;
       }
+      const snapshot = await getDocs(query(collection(db, 'questions'), where('mainTags', 'array-contains', config.profession)));
+      const all = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-      const requestStream = async () => {
+      let big3 = [];
+      if (config.big3) {
+        big3 = all.filter(q => q.big3 === true).sort((a, b) => (a.big3Order || 0) - (b.big3Order || 0));
+      }
+      const big3Ids = new Set(big3.map(q => q.id));
+      const remaining = all.filter(q => (config.big3 ? !big3Ids.has(q.id) : !q.big3));
+      const numAllowed = Math.max((config.questionCount || 0) - big3.length, 0);
+      const selected = [...remaining].sort(() => 0.5 - Math.random()).slice(0, numAllowed);
+
+      setQuestions([...big3, ...selected].slice(0, config.questionCount));
+    };
+    fetchQuestions();
+  }, [config]);
+
+  // ======== PERSISTENT PREVIEW (VIDEO MODE) ========
+  // On mount: reuse a stored live stream if available; otherwise request one.
+  useEffect(() => {
+    if (!isVideo) return; // audio-only: no preview box
+    const existing = getStoredMediaStream();
+    const attach = (s) => {
+      setStream(s);
+      if (videoRef.current) {
+        const v = videoRef.current;
+        v.srcObject = s;
+        v.muted = true;
+        v.playsInline = true;
+        const tryPlay = () => v.play().catch(() => {});
+        if (v.readyState >= 2) tryPlay(); else v.onloadedmetadata = tryPlay;
+      }
+    };
+
+    if (existing && existing.getTracks().some(t => t.readyState === 'live')) {
+      attach(existing);
+    } else {
+      (async () => {
         try {
-          const newStream = config.mode === 'video'
-            ? await getMediaStream()
-            : await navigator.mediaDevices.getUserMedia({ audio: true });
-
-          setStream(newStream);
-          if (videoRef.current && config.mode === 'video') {
-            videoRef.current.srcObject = newStream;
-          }
+          const s = await getMediaStream(); // your helper (camera+mic)
+          attach(s);
         } catch (err) {
           console.error('Stream request error:', err);
-          setStatus(err.message || '⚠️ Media not available.');
+          setStatus(err?.message || '⚠️ Unable to access microphone/camera.');
         }
-      };
+      })();
+    }
 
-      requestStream();
-    }, []);
+    // cleanup when unmounting page
+    return () => {
+      if (videoRef.current) videoRef.current.srcObject = null;
+      // keep stream alive between questions/pages unless we’re leaving the app
+      // (we won’t stop tracks here; your clear happens on app-level teardown)
+    };
+  }, [isVideo]);
 
+    const hasAnswer = !!recordings[questionIndex] && !recordings[questionIndex].skipped;
+
+  // SAFETY: if autoplay stalls, re-attach quickly
   useEffect(() => {
-    if (!isVideo) return;
-    const el = videoRef.current;
-    const previewVisible = isCountingDown || isRecording;
-    if (!previewVisible || !el || !stream) return;
+    const previewVisible = isVideo && (!hasAnswer || isRecording);
 
-    el.srcObject = stream;
-    el.play?.().catch(() => {});
+    if (!previewVisible) return;
+    if (!stream || !videoRef.current) return;
 
-    // Safety re-check in case autoplay stalls
-    const id = setTimeout(() => {
-      if (el.videoWidth === 0 && el.videoHeight === 0) {
-        el.srcObject = stream;
-        el.play?.().catch(() => {});
-      }
-    }, 200);
+    const v = videoRef.current;
+    if (v.srcObject !== stream) v.srcObject = stream; 
+    v.muted = true;
+    v.playsInline = true;
 
-    return () => clearTimeout(id);
-  }, [stream, isCountingDown, isRecording, isVideo]);
+    const play = () => v.play().catch(() => {});
+    if (v.readyState >= 2) play(); else v.onloadedmetadata = play;
+  }, [isVideo, stream, isRecording, hasAnswer, questionIndex]);
 
-  // ✅ Cleanup stream and preview
+  // page-level cleanup (full teardown)
   useEffect(() => {
     return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+      if (recordingTimerRef.current) clearTimeout(recordingTimerRef.current);
+      if (videoRef.current) videoRef.current.srcObject = null;
+      clearStoredMediaStream(); // mirror original cleanup
+    };
+  }, []);
+
+  // ======== RECORDING ========
+  const startRecording = async () => {
+    try {
+      setStatus('');
+      setTimeLimitReached(false);
+
+      // Ensure we have a stream (audio-only mode lazily requests mic)
+      let s = stream;
+      if (!s) {
+        s = isVideo
+          ? await getMediaStream()
+          : await navigator.mediaDevices.getUserMedia({ audio: true });
+        setStream(s);
+        if (isVideo && videoRef.current) {
+          videoRef.current.srcObject = s;
+          videoRef.current.play?.().catch(() => {});
+        }
       }
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
-      clearStoredMediaStream();
-    };
-  }, [stream]);
 
-  useEffect(() => {
-  // ✅ Use custom questions if provided (Custom Mode)
-  if (config.questions && Array.isArray(config.questions)) {
-    setQuestions(config.questions);
-    return;
-  }
+      // VIDEO chunks (if video mode)
+      const vChunks = [];
+      const vRec = new MediaRecorder(s);
+      vRec.ondataavailable = (e) => { if (e.data.size > 0) vChunks.push(e.data); };
+      videoRecorderRef.current = vRec;
+      videoChunksRef.current = vChunks;
+      vRec.start();
 
-  const fetchQuestions = async () => {
-    const snapshot = await getDocs(
-      query(collection(db, 'questions'), where('mainTags', 'array-contains', config.profession))
-    );
+      // AUDIO chunks
+      const aTracks = s.getAudioTracks();
+      const aStream = new MediaStream(aTracks);
+      const aChunks = [];
+      const aRec = new MediaRecorder(aStream);
+      aRec.ondataavailable = (e) => { if (e.data.size > 0) aChunks.push(e.data); };
+      audioRecorderRef.current = aRec;
+      audioChunksRef.current = aChunks;
+      aRec.start();
 
-    const all = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      // auto-stop after 3 minutes
+      recordingTimerRef.current = setTimeout(() => {
+        setTimeLimitReached(true);
+        stopRecording();
+      }, 3 * 60 * 1000);
 
-    let big3Questions = [];
-
-    if (config.big3) {
-      big3Questions = all
-        .filter(q => q.big3 === true)
-        .sort((a, b) => (a.big3Order || 0) - (b.big3Order || 0));
+      setElapsed(0);
+      setIsRecording(true);
+    } catch (err) {
+      console.error(err);
+      setStatus(err?.message || 'Unable to access microphone/camera.');
     }
-
-    const big3Ids = new Set(big3Questions.map(q => q.id));
-    const remaining = all.filter(q =>
-      config.big3 ? !big3Ids.has(q.id) : !q.big3
-    );
-
-    const numAllowed = Math.max(config.questionCount - big3Questions.length, 0);
-    const shuffled = [...remaining].sort(() => 0.5 - Math.random());
-    const selected = shuffled.slice(0, numAllowed);
-
-    const totalQuestions = [...big3Questions, ...selected].slice(0, config.questionCount);
-
-    setQuestions(totalQuestions);
-  };
-
-  fetchQuestions();
-}, [config]);
-
-
-  const startRecording = () => {
-    if (!stream) {
-      setStatus('⚠️ Media not available.');
-      return;
-    }
-
-    if (recordingTimerRef.current) {
-      clearTimeout(recordingTimerRef.current);
-      recordingTimerRef.current = null;
-    }
-
-    videoChunksRef.current = [];
-    const videoRecorder = new MediaRecorder(stream);
-    videoRecorder.ondataavailable = (e) => {
-      if (e.data.size > 0) videoChunksRef.current.push(e.data);
-    };
-    videoRecorderRef.current = videoRecorder;
-    videoRecorder.start();
-
-    const audioTracks = stream.getAudioTracks();
-    const audioStream = new MediaStream(audioTracks);
-    audioChunksRef.current = [];
-    const audioRecorder = new MediaRecorder(audioStream);
-    audioRecorder.ondataavailable = (e) => {
-      if (e.data.size > 0) audioChunksRef.current.push(e.data);
-    };
-    audioRecorderRef.current = audioRecorder;
-    audioRecorder.start();
-
-    // ⏱ Auto-stop recording after 3 minutes
-    recordingTimerRef.current = setTimeout(() => {
-      setTimeLimitReached(true);
-      stopRecording(); // Triggers the full save + transition logic
-    }, 3 * 60 * 1000); // 3 minutes
-
-    setIsRecording(true);
   };
 
   const stopRecording = () => {
     if (!videoRecorderRef.current || !audioRecorderRef.current) return;
 
     return new Promise((resolve) => {
-      let completed = 0;
-      const checkDone = () => {
-        completed += 1;
-        if (completed === 2) resolve();
-      };
-
-      videoRecorderRef.current.onstop = checkDone;
-      audioRecorderRef.current.onstop = checkDone;
-
+      let done = 0;
+      const check = () => { done += 1; if (done === 2) resolve(); };
+      videoRecorderRef.current.onstop = check;
+      audioRecorderRef.current.onstop = check;
       videoRecorderRef.current.stop();
       audioRecorderRef.current.stop();
     }).then(() => {
       const videoBlob = new Blob(videoChunksRef.current, { type: 'video/webm' });
       const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-
       const videoUrl = isVideo ? URL.createObjectURL(videoBlob) : null;
       const audioUrl = URL.createObjectURL(audioBlob);
 
-      const currentQuestion = questions[questionIndex];
-
+      const current = questions[questionIndex];
       setRecordings(prev => {
         const next = [...prev];
         next[questionIndex] = {
-          question: currentQuestion.text,
-          tip: currentQuestion.tip || '',
+          question: current.text,
+          tip: current.tip || '',
           videoBlob: isVideo ? videoBlob : null,
           videoUrl,
           audioBlob,
@@ -244,34 +224,50 @@ function InterviewSession() {
       });
 
       setIsRecording(false);
+
+      // IMPORTANT: keep stream running in video mode so preview stays visible
+      if (!isVideo) {
+        // audio-only: stop mic now
+        if (stream) {
+          stream.getTracks().forEach(t => t.stop());
+          setStream(null);
+        }
+      }
+
+      // reset recorders
+      videoRecorderRef.current = null;
+      audioRecorderRef.current = null;
+      if (recordingTimerRef.current) {
+        clearTimeout(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
     });
   };
 
+  // NAV
   const handleNext = (recOverride) => {
-    setTimeLimitReached(false); // 🔁 clear the message
+    setTimeLimitReached(false);
     if (questionIndex + 1 < questions.length) {
-      setQuestionIndex((i) => i + 1);
-      setCount(5);
-      setIsCountingDown(true);
-    } else {
-      const finalRecs = recOverride ?? recordings; // use freshest array if provided
-      const serializableRecordings = finalRecs.map((r) => ({
-        question: r.question,
-        tip: r.tip || '',
-        skipped: !!r.skipped,
-        mode: r.mode,
-        // only pass URLs/strings – no Blobs/functions/refs
-        videoUrl: r.videoUrl || null,
-        audioUrl: r.audioUrl || null,
-      }));
-      navigate('/summary', {
-        state: { recordings: serializableRecordings, profession: config.profession },
-      });
+      setQuestionIndex(i => i + 1);
+      return;
     }
+    const finalRecs = recOverride ?? recordings;
+    const serializable = finalRecs.map(r => ({
+      question: r.question,
+      tip: r.tip || '',
+      skipped: !!r.skipped,
+      mode: r.mode,
+      videoUrl: r.videoUrl || null,
+      audioUrl: r.audioUrl || null,
+    }));
+    navigate('../summary', { state: { recordings: serializable, profession: config.profession, totalSessionTime: sessionElapsed} });
   };
 
   const handleSkip = () => {
-    const skippedEntry = {
+    const alreadyAnswered = !!recordings[questionIndex] && !recordings[questionIndex].skipped;
+    if (alreadyAnswered) return; // no re-record/skip after answer
+
+    const skipped = {
       question: questions[questionIndex].text,
       skipped: true,
       videoBlob: null,
@@ -280,142 +276,181 @@ function InterviewSession() {
       mode: config.mode,
       tip: questions[questionIndex].tip || '',
     };
-
-    // Build the next array synchronously so we can pass it to handleNext
     const next = [...recordings];
-    next[questionIndex] = skippedEntry;
-
+    next[questionIndex] = skipped;
     setRecordings(next);
-    handleNext(next); // ensures summary sees the skipped state on the last question
+    handleNext(next);
   };
 
-  const showPreview = isVideo && (isCountingDown || isRecording);
+  // Completed = recorded or explicitly skipped
+  const completedCount = recordings.filter(
+    r => !!r && (r.skipped || r.audioUrl || r.videoUrl)
+  ).length;
 
-  if (!questions.length) return <p className="p-6 text-center">Loading questions...</p>;
+  const pct = questions.length
+    ? Math.round((completedCount / questions.length) * 100)
+    : 0;
+
+  if (!questions.length) {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="border-b border-border bg-card">
+          <div className="container mx-auto px-4 py-4">
+            <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+              <ChevronLeft className="h-4 w-4 mr-2" /> Back
+            </Button>
+          </div>
+        </header>
+        <main className="container mx-auto px-4 py-10">
+          <Card><CardContent className="p-6 text-center">Loading questions…</CardContent></Card>
+        </main>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-xl mx-auto p-6 space-y-6">
-      <div className="space-y-2">
-        <h1 className="text-2xl font-bold text-gray-900">Mock Interview</h1>
-        <p className="text-sm text-gray-600">Question {questionIndex + 1} of {questions.length}</p>
-        {status && <p className="text-red-500 font-medium">{status}</p>}
-      </div>
-
-      <div className="p-4 border border-gray-200 rounded-xl bg-white shadow-sm space-y-4">
-        <p className="text-lg font-medium text-gray-800">
-          {questions[questionIndex].text}
-        </p>
-
-        {/* Your Answer playback lives here when not previewing/recording */}
-        {!showPreview && recordings[questionIndex]?.videoUrl && (
-          <div className="mt-3">
-            <p className="block font-medium mb-1">Your Answer</p>
-            <div
-              className="relative w-full"
-              style={{
-                aspectRatio: config.videoAspectRatio || '16 / 9'
-              }}
-            >
-              <video
-                controls
-                className="absolute inset-0 w-full h-full object-cover rounded"
-                src={recordings[questionIndex].videoUrl}
-                preload="metadata"
-              />
-            </div>
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="border-b border-border bg-card">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="lg" onClick={() => navigate('../dashboard')} className="text-muted-foreground hover:text-foreground">
+              <ChevronLeft className="h-4 w-4 mr-2" /> Back to Dashboard
+            </Button>
+            <Badge variant="outline">Question {questionIndex + 1} of {questions.length}</Badge>
           </div>
-        )}
-      </div>
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <Clock className="h-4 w-4" />
+            <span>{String(Math.floor(sessionElapsed / 60))}:{String(sessionElapsed % 60).padStart(2, '0')}</span>
+          </div>
+        </div>
+      </header>
 
-      {/* Media slot: live preview during countdown/recording */}
-      {isVideo && (isCountingDown || isRecording) && (
-        <div className="w-full border rounded bg-black/5">
-          <div
-            className="relative w-full"
-            style={{
-              aspectRatio: config.videoAspectRatio || '16 / 9'
-            }}
-          >
-            {/* Live preview */}
-            <video
-              ref={videoRef}
-              autoPlay
-              muted
-              playsInline
-              className={`absolute inset-0 w-full h-full object-cover rounded transition-opacity duration-200 ${
-                showPreview ? 'opacity-100' : 'opacity-0'
-              }`}
-            />
+      <main className="container mx-auto px-4 py-8">
+        {/* Progress */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-lg font-medium">Session Progress</h2>
+            <span className="text-sm text-muted-foreground">{pct}% Complete</span>
+          </div>
+          <Progress value={pct} className="h-2" />
+        </div>
 
-            {/* Placeholder */}
-            {!showPreview && (
-              <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">
-                Camera preview will appear here
+        {/* Question */}
+        <Card className="mb-6">
+          <CardHeader><CardTitle className="text-xl">Question {questionIndex + 1}</CardTitle></CardHeader>
+          <CardContent><p className="text-lg text-foreground leading-relaxed">{questions[questionIndex].text}</p></CardContent>
+        </Card>
+
+        {/* Media / Recording */}
+        <Card className="mb-6">
+          <CardContent className="p-6">
+            <div className="grid gap-6 md:grid-cols-2">
+              {/* Left: ALWAYS-ON Preview (video mode) + Playback section */}
+              <div className="space-y-4">
+                {isVideo && (!hasAnswer || isRecording) && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Camera Preview</p>
+                    <div className="w-full rounded-lg border bg-black/5">
+                      <div className="relative w-full" style={{ aspectRatio: config.videoAspectRatio || '16 / 9' }}>
+                        <video
+                          ref={videoRef}
+                          autoPlay
+                          muted
+                          playsInline
+                          className="absolute inset-0 h-full w-full rounded object-cover"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {!isRecording && hasAnswer && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Your Answer</p>
+                    {recordings[questionIndex].videoUrl ? (
+                      <div className="relative w-full" style={{ aspectRatio: config.videoAspectRatio || '16 / 9' }}>
+                        <video
+                          controls
+                          className="absolute inset-0 h-full w-full rounded object-cover"
+                          src={recordings[questionIndex].videoUrl}
+                          preload="metadata"
+                          onLoadedMetadata={(e) => {
+                            const v = e.currentTarget;
+                            if (!isFinite(v.duration) || isNaN(v.duration)) return;
+                            const snapBack = () => { v.removeEventListener('timeupdate', snapBack); v.currentTime = 0; };
+                            v.currentTime = Number.MAX_SAFE_INTEGER;
+                            v.addEventListener('timeupdate', snapBack);
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <audio controls src={recordings[questionIndex].audioUrl} className="w-full rounded" />
+                    )}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        </div>
-      )}
 
-      {isCountingDown && (
-        <p className="text-orange-600 text-lg font-bold text-center">
-          Recording starts in: {count}
-        </p>
-      )}
+              {/* Right: Controls */}
+              <div className="flex flex-col items-center justify-center gap-4 text-center">
+                {status && <p className="text-sm text-red-600 font-medium">{status}</p>}
 
-      {timeLimitReached && (
-        <p className="text-sm text-red-600 text-center">
-          You reached the 3-minute time limit. Your response was automatically saved.
-        </p>
-      )}
+                {!isRecording && !hasAnswer && (
+                  <>
+                    <h3 className="text-lg font-medium">Ready to record your answer?</h3>
+                    <p className="text-muted-foreground">Take your time to think, then click record when ready.</p>
+                    <Button size="lg" className="w-24 h-24 rounded-full" onClick={startRecording}>
+                      <Mic className="h-8 w-8" />
+                    </Button>
+                  </>
+                )}
 
-      <div className="flex gap-4 flex-wrap justify-center">
-        {!isRecording && (
-          <Button type="secondary" onClick={handleSkipClick}>Skip</Button>
-        )}
+                {isRecording && (
+                  <>
+                    <h3 className="text-lg font-medium">Recording…</h3>
+                    <div className="flex items-center gap-2 text-sm text-red-500">
+                      <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-red-500" />
+                      <span>Live</span>
+                    </div>
+                    <Button size="lg" variant="destructive" className="w-24 h-24 rounded-full" onClick={stopRecording}>
+                      <MicOff className="h-8 w-8" />
+                    </Button>
+                  </>
+                )}
 
-        {isRecording && (
-          <div className="flex items-center gap-4 flex-wrap justify-center">
-            <p className="text-green-700 font-semibold">🔴 Recording...</p>
-            <Button type="danger" onClick={stopRecording}>Stop Recording</Button>
-          </div>
-        )}
+                {hasAnswer && !isRecording && (
+                  <p className="text-lg text-muted-foreground">Answer saved. Continue to the next question when ready.</p>
+                )}
 
-        {!isRecording && !isCountingDown && (
-          <Button type="primary" onClick={() => handleNext()}>Next Question</Button>
-        )}
-      </div>
-      {showConfirmSkip && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          aria-modal="true"
-          role="dialog"
-        >
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={cancelDiscard}
-            aria-hidden="true"
-          />
-
-          {/* Modal panel */}
-          <div className="relative z-10 w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <h2 className="text-xl font-semibold text-gray-900">Discard this answer?</h2>
-            <p className="mt-2 text-sm text-gray-600">
-              You’ve already recorded an answer for this question. Skipping will discard it and mark this question as skipped.
-            </p>
-
-            <div className="mt-6 flex justify-end gap-3">
-              <Button type="secondary" onClick={cancelDiscard}>Cancel</Button>
-              <Button type="danger" onClick={confirmDiscardAndSkip}>
-                Discard &amp; Skip
-              </Button>
+                {timeLimitReached && (
+                  <p className="text-lg text-red-600">3-minute limit reached. Your response was saved.</p>
+                )}
+              </div>
             </div>
-          </div>
+          </CardContent>
+        </Card>
+
+        {/* Navigation */}
+        <div className="flex flex-wrap justify-end gap-3">
+          {/* Before recording: only Skip */}
+          {!isRecording && !hasAnswer && (
+            <Button variant="outline" onClick={handleSkip}>
+              <SkipForward className="mr-2 h-4 w-4" /> Skip
+            </Button>
+          )}
+
+          {/* After recording: only Next/Complete */}
+          {!isRecording && hasAnswer && (
+            <Button onClick={() => handleNext()}>
+              {questionIndex === questions.length - 1 ? (
+                <>
+                  <CheckCircle2 className="mr-2 h-4 w-4" /> Complete Session
+                </>
+              ) : 'Next Question'}
+            </Button>
+          )}
         </div>
-      )}
+      </main>
     </div>
   );
 }
-
-export default InterviewSession;

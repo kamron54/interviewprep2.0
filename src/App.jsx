@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../firebase';
@@ -11,15 +11,18 @@ import Dashboard from './pages/Dashboard';
 import InterviewSetup from './pages/InterviewSetup';
 import InterviewSession from './pages/InterviewSession';
 import SessionSummary from './pages/SessionSummary';
-import InterviewPrepStage from './pages/InterviewPrepStage';
-import InterviewTips from './pages/InterviewTips';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminQuestionManager from './pages/AdminQuestionManager';
-
+import Pricing from './pages/Pricing';
+import Resources from './pages/Resources';
+import EthicsGuide from './pages/guides/EthicsGuide';
+import CommunicationGuide from './pages/guides/CommunicationGuide';
+import PitfallsGuide from './pages/guides/PitfallsGuide';
+import About from './pages/About';
 import { ProfessionProvider } from './professions/ProfessionContext';
-import ProfessionSelector from './pages/ProfessionSelector';
+import PrivacyPolicy from './pages/privacy';
+import TermsOfService from './pages/terms';
 
-import { useLocation } from 'react-router-dom';
 
 function Protected({ user, children }) {
   const location = useLocation();
@@ -45,33 +48,14 @@ function App() {
 
   return (
     <Routes>
-      {/* Root selector (no layout around it) */}
-      <Route path="/" element={<ProfessionSelector />} />
+      {/* Redirect / to a default profession */}
+      <Route path="/" element={<Navigate to="/dental" replace />} />
 
-      {/* Non-profession site (keeps all existing routes/guards) */}
-      <Route element={<Layout />}>
-        {/* If you still want a generic homepage, serve it at /home */}
-        <Route path="home" element={<HomePage />} />
+      {/* Global auth */}
+      <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<SignUp />} />
 
-        {/* Public */}
-        <Route path="login" element={<Login />} />
-        <Route path="signup" element={<SignUp />} />
-        <Route path="interview-tips" element={<InterviewTips />} />
-
-        {/* Protected */}
-        <Route path="dashboard" element={<Protected user={user}><Dashboard /></Protected>} />
-        <Route path="setup"     element={<Protected user={user}><InterviewSetup /></Protected>} />
-        <Route path="interview" element={<Protected user={user}><InterviewSession /></Protected>} />
-        <Route path="summary"   element={<Protected user={user}><SessionSummary /></Protected>} />
-        <Route path="prep"      element={<Protected user={user}><InterviewPrepStage /></Protected>} />
-
-        {/* Admin */}
-        <Route path="admin"     element={<Protected user={user}><AdminDashboard /></Protected>} />
-        <Route path="admin-dashboard" element={<AdminDashboard />} />
-        <Route path="admin/questions" element={<Protected user={user}><AdminQuestionManager /></Protected>} />
-      </Route>
-
-      {/* Profession-scoped site (parallel to the above) */}
+      {/* Profession-scoped */}
       <Route
         path="/:profession/*"
         element={
@@ -80,15 +64,30 @@ function App() {
           </ProfessionProvider>
         }
       >
+        {/* Public */}
         <Route index element={<HomePage />} />
-        <Route path="tips" element={<InterviewTips />} />
-        <Route path="setup"   element={<Protected user={user}><InterviewSetup /></Protected>} />
-        <Route path="session" element={<Protected user={user}><InterviewSession /></Protected>} />
-        <Route path="summary" element={<Protected user={user}><SessionSummary /></Protected>} />
+        <Route path="pricing" element={<Pricing />} />
+        <Route path="resources" element={<Resources />} />
+        <Route path="about" element={<About />} />
+        <Route path="resources/ethics" element={<EthicsGuide />} />
+        <Route path="resources/communication" element={<CommunicationGuide />} />
+        <Route path="resources/pitfalls" element={<PitfallsGuide />} />
+        <Route path="privacy" element={<PrivacyPolicy />} />
+        <Route path="terms" element={<TermsOfService />} />
+
+        {/* Protected */}
+        <Route path="dashboard" element={<Protected user={user}><Dashboard /></Protected>} />
+        <Route path="setup"     element={<Protected user={user}><InterviewSetup /></Protected>} />
+        <Route path="session"   element={<Protected user={user}><InterviewSession /></Protected>} />
+        <Route path="summary"   element={<Protected user={user}><SessionSummary /></Protected>} />
+
+        {/* Admin */}
+        <Route path="admin"           element={<Protected user={user}><AdminDashboard /></Protected>} />
+        <Route path="admin/questions" element={<Protected user={user}><AdminQuestionManager /></Protected>} />
       </Route>
 
       {/* Fallback */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<Navigate to="/dental" replace />} />
     </Routes>
   );
 }

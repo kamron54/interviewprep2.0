@@ -42,19 +42,17 @@ export async function getFeedback(question, transcript, profession) {
   try {
     const response = await fetch('/api/feedback', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ question, transcript, profession }),
     });
 
     const data = await response.json();
-
     if (!response.ok) {
       console.error('❌ Feedback API error:', data);
       throw new Error(data.error || 'Error generating feedback');
     }
 
+    // data.feedback is now a structured object
     return data.feedback;
   } catch (error) {
     console.error('❌ Feedback fetch error:', error.message);
