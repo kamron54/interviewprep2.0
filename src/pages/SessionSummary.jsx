@@ -1,14 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { auth, db } from '../../firebase';
-import { doc, runTransaction, arrayUnion } from 'firebase/firestore';
+import { doc, runTransaction, arrayUnion, collection, addDoc } from 'firebase/firestore';
 
 // Existing app utilities
 import { transcribeAudio, getFeedback } from '../ai/aiService';
-import { exportInterviewSession } from '../utils/exportZip';
 
 // shadcn/ui (already used elsewhere in your app)
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner"; // or your toast of choice
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -95,7 +101,10 @@ export default function SessionSummary() {
   const location = useLocation();
   const navigate = useNavigate();
   const sessionData = location.state || {};
-  const { recordings = [], profession, totalSessionTime = 0 } = sessionData; // profession = human-readable tag (e.g., "Dental")
+  const { recordings = [], profession } = sessionData;
+  const isReadonly = !!sessionData.readonly && !!sessionData.savedSession;
+  const saved = isReadonly ? sessionData.savedSession : null;
+  const totalSessionTime = isReadonly ? (saved?.totalSessionTime ?? 0) : (sessionData.totalSessionTime ?? 0);
   const sessionId = sessionData?.sessionId || null;
   const totalTimeFormatted = useMemo(() => {
     const mins = Math.floor(totalSessionTime / 60);
@@ -105,6 +114,8 @@ export default function SessionSummary() {
 
 
   const [expandedTips, setExpandedTips] = useState({});
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [saveTitle, setSaveTitle] = useState('');
   const [results, setResults] = useState([]);
   const [loadingIndex, setLoadingIndex] = useState(null);
 
@@ -120,6 +131,10 @@ export default function SessionSummary() {
   const answeredQuestionsCount = useMemo(
   () => recordings.filter(r => r && !r.skipped).length,
   [recordings]
+);
+const questionsCount = useMemo(
+  () => isReadonly ? (saved?.counts?.totalQuestions ?? saved?.items?.length ?? 0) : answeredQuestionsCount,
+  [isReadonly, saved, answeredQuestionsCount]
 );
 const scoredItems = useMemo(() => {
   return results
@@ -188,7 +203,9 @@ useEffect(() => {
   };
 
   // Process responses sequentially (keeps your current behavior)
+  // Normal (live) processing path — skip entirely in read-only mode
   useEffect(() => {
+    if (isReadonly) return;
     let cancelled = false;
 
     const processResponses = async () => {
@@ -246,7 +263,26 @@ useEffect(() => {
     return () => {
       cancelled = true;
     };
-  }, [recordings, profession, base, navigate]);
+  }, [recordings, profession, base, navigate, isReadonly]);
+
+  // Read-only hydration: convert saved items to the shape used by the UI
+  useEffect(() => {
+    if (!isReadonly) return;
+    if (!saved?.items?.length) {
+      setResults([]);
+      return;
+    }
+    const items = saved.items.map((it, idx) => ({
+      originalIndex: idx,
+      question: it.question,
+      tip: it.tip,
+      skipped: !!it.skipped,
+      transcript: it.transcript || '',
+      feedback: it.feedback || null,
+      // no audioUrl/videoUrl in saved sessions (intentionally)
+    }));
+    setResults(items);
+  }, [isReadonly, saved]);
 
   const orderedResults = useMemo(() => {
   return [...results].sort((a, b) => {
@@ -255,6 +291,63 @@ useEffect(() => {
     return 0; // preserve order otherwise
   });
 }, [results]);
+
+ // Create a compact, media-free payload to store
+ const serializeForSave = () => {
+   const items = orderedResults.map((r) => {
+     const fb = normalizeFeedback(r.feedback);
+     return {
+       question: r.question,
+       tip: r.tip || '',
+       skipped: !!r.skipped,
+       transcript: r.skipped ? '' : (r.transcript || ''),
+       feedback: fb && !fb.legacyHtml ? {
+         overallScore: fb.overallScore ?? 0,
+         sectionScores: {
+           overallImpression: fb.sectionScores?.overallImpression ?? 0,
+           clarityStructure: fb.sectionScores?.clarityStructure ?? 0,
+           content: fb.sectionScores?.content ?? 0,
+         },
+         summary: fb.summary || '',
+         suggestions: Array.isArray(fb.suggestions) ? fb.suggestions : [],
+         rubricVersion: fb.rubricVersion || 'v1',
+       } : null,
+     };
+   });
+   return {
+     title: saveTitle?.trim() || `Session ${new Date().toLocaleString()}`,
+     profession: profession || 'General',
+     createdAt: Date.now(),
+     overallAvg,
+     totalSessionTime,
+     counts: {
+       totalQuestions: recordings.length,
+       answered: answeredQuestionsCount,
+       skipped: skippedCount,
+     },
+     items,
+   };
+ };
+
+   const handleSaveSession = async () => {
+   const uid = auth.currentUser?.uid;
+   if (!uid) {
+     toast?.error?.("You must be signed in to save a session.");
+     return;
+   }
+   try {
+     const payload = serializeForSave();
+     const colRef = collection(doc(db, 'users', uid), 'sessions');
+     await addDoc(colRef, payload);
+     setSaveOpen(false);
+     toast?.success?.("Session saved to your dashboard.");
+     navigate(`${base}/dashboard`);
+   } catch (e) {
+     console.error(e);
+     toast?.error?.("Failed to save session. Please try again.");
+   }
+ };
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -273,13 +366,38 @@ useEffect(() => {
             <Badge variant="outline">Practice Session Complete</Badge>
           </div>
           <div className="flex items-center gap-2">
-            {results.length > 0 && (
-              <Button
-                variant="outline"
-                onClick={() => exportInterviewSession(results)}
-              >
-                <Download className="h-4 w-4 mr-2" /> Download ZIP
-              </Button>
+            {results.length > 0 && !isReadonly && (
+              <AlertDialog open={saveOpen} onOpenChange={setSaveOpen}>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline">
+                    <Download className="h-4 w-4 mr-2" /> Save Session
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Save this session to your dashboard?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will save your scores, transcripts, tips, and feedback.
+                      <br />
+                      <span className="font-medium">Recordings (audio/video) are not saved</span> to conserve storage.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Title</label>
+                    <Input
+                      placeholder="e.g., Behavioral practice — Sept 12"
+                      value={saveTitle}
+                      onChange={(e) => setSaveTitle(e.target.value)}
+                    />
+                  </div>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleSaveSession}>
+                      Save
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             )}
             <Button onClick={() => navigate(`${base}/setup`)}>Start New Session</Button>
           </div>
@@ -317,7 +435,7 @@ useEffect(() => {
             {/* Answered Questions */}
             <div className="text-center p-4 bg-card rounded-lg border">
               <BarChart3 className="h-6 w-6 text-primary mx-auto mb-2" />
-              <div className="text-xl font-semibold">{answeredQuestionsCount}</div>
+              <div className="text-xl font-semibold">{questionsCount}</div>
               <div className="text-sm text-muted-foreground">Questions</div>
             </div>
 
@@ -338,11 +456,11 @@ useEffect(() => {
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Clock className="h-4 w-4" />
-                  <span>Transcribing and analyzing your responses…</span>
+                  <span>{isReadonly ? 'Loading saved session…' : 'Transcribing and analyzing your responses…'}</span>
                 </div>
-                <span className="text-sm text-muted-foreground">{progressPercent}%</span>
+                {!isReadonly && <span className="text-sm text-muted-foreground">{progressPercent}%</span>}
               </div>
-              <Progress value={progressPercent} className="h-2" />
+              {!isReadonly && <Progress value={progressPercent} className="h-2" />}
               {loadingIndex !== null && (
                 <p className="text-sm text-muted-foreground mt-2 text-center">
                   Processing response {loadingIndex + 1} of {recordings.length}
@@ -374,7 +492,7 @@ useEffect(() => {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {/* Media */}
-                  {!item.skipped && (
+                  {!isReadonly && !item.skipped && (
                     <div className="space-y-2">
                       <p className="text-sm font-medium flex items-center gap-2">
                         <VideoIcon className="h-4 w-4" /> Your Response

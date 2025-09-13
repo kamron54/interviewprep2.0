@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from '../../firebase';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Card from '../components/Card';
@@ -38,6 +38,7 @@ function daysLeft(end) {
 
 export default function Dashboard() {
   const [userData, setUserData] = useState(null);
+  const [recentSessions, setRecentSessions] = useState([]);
   const [isVerified, setIsVerified] = useState(false);
   const navigate = useNavigate();
 
@@ -61,6 +62,16 @@ export default function Dashboard() {
         const docSnap = await getDoc(doc(db, 'users', user.uid));
         if (docSnap.exists()) {
           setUserData(docSnap.data());
+           // Fetch recent saved sessions (lightweight)
+            try {
+              const sessRef = collection(doc(db, 'users', user.uid), 'sessions');
+              const q = query(sessRef, orderBy('createdAt', 'desc'), limit(5));
+              const s = await getDocs(q);
+              const items = s.docs.map(d => ({ id: d.id, ...d.data() }));
+              setRecentSessions(items);
+            } catch (e) {
+             console.warn('Could not load sessions:', e);
+            }
         } else {
           console.warn('User data not found.');
         }
@@ -142,12 +153,6 @@ export default function Dashboard() {
   ];
 
   const locked = !(userState === 'paid_active' || userState === 'free_trial_active');
-
-  const recent = [
-    { id: 1, type: 'Behavioral', questions: 8, score: 85, date: '2025-08-31' },
-    { id: 2, type: 'Technical', questions: 6, score: 72, date: '2025-08-29' },
-    { id: 3, type: 'Situational', questions: 10, score: 90, date: '2025-08-27' },
-  ];
 
   if (!isVerified) {
     return (
@@ -271,29 +276,15 @@ export default function Dashboard() {
                       : 'Upgrade to access your complete practice history and detailed performance analytics.'}
                   </p>
                 </div>
-              ) : (
-                recent.length === 0 ? (
+
+                ) : recentSessions.length === 0 ? (
                   <div className="flex flex-col items-center justify-center text-center border border-border rounded-xl bg-background p-10">
-                    <h3 className="text-base font-semibold text-foreground">No sessions yet</h3>
-                    <p className="mt-2 text-sm text-muted-foreground">Start your first timed practice to see it here.</p>
-                    <div className="mt-4">
-                      <Button
-                        onClick={() => {
-                          const p = localStorage.getItem('lastProfession');
-                          if (p) navigate('/' + p + '/setup'); else navigate('/setup');
-                        }}
-                        className="bg-primary text-primary-foreground hover:bg-primary/90"
-                      >
-                        <span className="inline-flex items-center">
-                          <Play className="h-4 w-4 mr-2" />
-                          Start Practice
-                        </span>
-                      </Button>
-                    </div>
+                    <h3 className="text-base font-semibold text-foreground">No saved sessions yet</h3>
+                    <p className="mt-2 text-sm text-muted-foreground">Complete a practice and press “Save Session” on the summary screen.</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {recent.map((s) => (
+                    {recentSessions.map((s) => (
                       <div
                         key={s.id}
                         className="flex items-center justify-between rounded-xl border border-border bg-background p-4 hover:bg-muted/40 transition"
@@ -301,20 +292,24 @@ export default function Dashboard() {
                         <div className="flex items-center gap-3">
                           <span className="inline-block h-2 w-2 rounded-full bg-foreground" aria-hidden />
                           <div>
-                            <div className="font-medium text-foreground">{s.type} Questions</div>
-                            <div className="text-sm text-muted-foreground">{s.questions} questions • {s.date}</div>
+                            <div className="font-medium text-foreground">{s.title || 'Untitled Session'}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {s.counts?.totalQuestions ?? 0} questions • {new Date(s.createdAt).toLocaleDateString()}
+                            </div>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-3">
-                          <Badge variant={s.score >= 80 ? 'default' : 'secondary'}>{s.score}%</Badge>
-                          <Button variant="outline">Review</Button>
+                          <Badge variant={(s.overallAvg ?? 0) >= 80 ? 'default' : 'secondary'}>{Math.round(s.overallAvg ?? 0)}%</Badge>
+                          <Button variant="outline" onClick={() => navigate('/summary', { state: { readonly: true, savedSession: s } })}>
+                            Review
+                          </Button>
                         </div>
                       </div>
                     ))}
                   </div>
                 )
-              )}
+              }
             </div>
           </div>
         </Card>

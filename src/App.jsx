@@ -22,6 +22,7 @@ import About from './pages/About';
 import { ProfessionProvider } from './professions/ProfessionContext';
 import PrivacyPolicy from './pages/privacy';
 import TermsOfService from './pages/terms';
+import { Toaster } from 'sonner';
 
 
 function Protected({ user, children }) {
@@ -47,6 +48,7 @@ function App() {
   if (loading) return <div className="p-10 text-center">Loading...</div>;
 
   return (
+    <>
     <Routes>
       {/* Redirect / to a default profession */}
       <Route path="/" element={<Navigate to="/dental" replace />} />
@@ -89,6 +91,8 @@ function App() {
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/dental" replace />} />
     </Routes>
+    <Toaster position="top-right" richColors /> {/* 👈 add this */}
+   </>
   );
 }
 
