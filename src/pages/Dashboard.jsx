@@ -270,11 +270,6 @@ export default function Dashboard() {
                       ? 'Your subscription has ended. Reactivate to access your complete history and analytics.'
                       : 'Upgrade to access your complete practice history and detailed performance analytics.'}
                   </p>
-                  <div className="mt-5">
-                    <Button onClick={handleUpgrade} className={userState === 'paid_cancelled' ? 'bg-orange-600 text-white hover:bg-orange-700' : 'bg-primary text-primary-foreground'}>
-                      {userState === 'paid_cancelled' ? 'Reactivate Access' : 'Upgrade to Unlock'}
-                    </Button>
-                  </div>
                 </div>
               ) : (
                 recent.length === 0 ? (
