@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from '../../firebase';
 import { doc, getDoc, updateDoc, collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
@@ -40,6 +40,8 @@ export default function Dashboard() {
   const [userData, setUserData] = useState(null);
   const [recentSessions, setRecentSessions] = useState([]);
   const [isVerified, setIsVerified] = useState(false);
+  const { profession } = useParams();
+  const base = profession ? `/${profession}` : '/dental';
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -280,7 +282,7 @@ export default function Dashboard() {
                 ) : recentSessions.length === 0 ? (
                   <div className="flex flex-col items-center justify-center text-center border border-border rounded-xl bg-background p-10">
                     <h3 className="text-base font-semibold text-foreground">No saved sessions yet</h3>
-                    <p className="mt-2 text-sm text-muted-foreground">Complete a practice and press “Save Session” on the summary screen.</p>
+                    <p className="mt-2 text-sm text-muted-foreground">Complete a practice and click “Save Session” on the summary screen.</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -301,7 +303,10 @@ export default function Dashboard() {
 
                         <div className="flex items-center gap-3">
                           <Badge variant={(s.overallAvg ?? 0) >= 80 ? 'default' : 'secondary'}>{Math.round(s.overallAvg ?? 0)}%</Badge>
-                          <Button variant="outline" onClick={() => navigate('/summary', { state: { readonly: true, savedSession: s } })}>
+                          <Button
+                            variant="outline"
+                            onClick={() => navigate(`${base}/summary`, { state: { readonly: true, savedSession: s } })}
+                          >
                             Review
                           </Button>
                         </div>
