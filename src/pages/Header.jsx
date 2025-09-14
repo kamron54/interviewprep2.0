@@ -23,7 +23,8 @@ export default function Header() {
 
   const hideHeader =
     location.pathname.endsWith('/session') ||
-    location.pathname.endsWith('/summary');
+    location.pathname.endsWith('/summary') ||
+    location.pathname.endsWith('/setup');
 
   if (hideHeader) return null; 
 
