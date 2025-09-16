@@ -155,7 +155,10 @@ export default function Dashboard() {
     { label: 'Average Score',       value: `${averageScore}%`, Icon: Target,   color: 'text-medical-blue' },
   ];
 
-  const locked = !(userState === 'paid_active' || userState === 'free_trial_active');
+  // Free Trial 2 session limit
+  const FREE_TRIAL_SESSION_LIMIT = 2;
+  const trialSessionsLeft = Math.max(0, FREE_TRIAL_SESSION_LIMIT - sessionsCompleted);
+  const locked = !(userState === 'paid_active' || userState === 'free_trial_active' && trialSessionsLeft > 0);
 
   if (!isVerified) {
     return (
