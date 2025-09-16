@@ -24,7 +24,7 @@ function SignUp() {
       const user = userCred.user;
 
       const trialExpiresAt = new Date();
-      trialExpiresAt.setDate(trialExpiresAt.getDate() + 1);
+      trialExpiresAt.setDate(trialExpiresAt.getDate() + 7);
 
       await setDoc(doc(db, 'users', user.uid), {
         name: name,

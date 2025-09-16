@@ -136,7 +136,8 @@ export default function Dashboard() {
     userState = 'free_trial_active';
   }
 
-  const trialTimeLeft = computeTimeLeft(trialEnd);
+  const trialDaysRemaining = trialEnd ? daysLeft(trialEnd) : 0;
+  const trialDaysLabel = `${trialDaysRemaining} day${trialDaysRemaining === 1 ? '' : 's'}`;
   const paidDaysRemaining = subscriptionEndsAt ? daysLeft(subscriptionEndsAt) : null;
 
   // ---- KPIs ---------------------------------------------------
@@ -174,7 +175,7 @@ export default function Dashboard() {
   const statePill = (() => {
     switch (userState) {
       case 'free_trial_active':
-        return { text: `Free Trial${trialTimeLeft ? ` (${trialTimeLeft})` : ''}`, Icon: Star, color: 'text-warning', bg: 'bg-warning/10', border: 'border-warning/20' };
+        return { text: `Free Trial`, Icon: Star, color: 'text-warning', bg: 'bg-warning/10', border: 'border-warning/20' };
       case 'free_trial_expired':
         return { text: 'Trial Expired', Icon: AlertTriangle, color: 'text-destructive', bg: 'bg-destructive/10', border: 'border-destructive/20' };
       case 'paid_active':
@@ -355,7 +356,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <Star className="h-5 w-5 text-warning" />
-                <span className="font-medium text-foreground">Your free trial ends in {trialTimeLeft || '0h 0m'}</span>
+                <span className="font-medium text-foreground">Your free trial ends in {trialDaysLabel}</span>
               </div>
               <Button size="sm" className="bg-warning text-warning-foreground hover:bg-warning/90" onClick={handleUpgrade}>
                 Upgrade Now
