@@ -326,6 +326,34 @@ export default function Dashboard() {
 
       {/* State-specific alerts near the bottom (not fixed) */}
       <section className="mt-8 mb-8">
+        {userState === 'free_trial_expired' && (
+          <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+                <span className="font-medium text-destructive">Your free trial has expired</span>
+              </div>
+              <Button size="sm" className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleUpgrade}>
+                Upgrade Now
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {userState === 'paid_cancelled' && (
+          <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Gift className="h-5 w-5 text-orange-600" />
+                <span className="font-medium text-orange-800">Subscription Ended — Reactivate your access</span>
+              </div>
+              <Button size="sm" className="bg-orange-600 text-white hover:bg-orange-700" onClick={handleUpgrade}>
+                Reactivate
+              </Button>
+            </div>
+          </div>
+        )}
+
         {userState === 'free_trial_active' && (
           trialSessionsLeft === 0 ? (
             <div className="p-3 bg-warning/10 border border-warning/20 rounded-lg">
@@ -364,34 +392,6 @@ export default function Dashboard() {
               </div>
             </div>
           )
-        )}
-
-        {userState === 'paid_cancelled' && (
-          <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Gift className="h-5 w-5 text-orange-600" />
-                <span className="font-medium text-orange-800">Subscription Ended — Reactivate your access</span>
-              </div>
-              <Button size="sm" className="bg-orange-600 text-white hover:bg-orange-700" onClick={handleUpgrade}>
-                Reactivate
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {userState === 'free_trial_active' && (
-          <div className="p-3 bg-warning/10 border border-warning/20 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Star className="h-5 w-5 text-warning" />
-                <span className="font-medium text-foreground">Your free trial ends in {trialDaysLabel}</span>
-              </div>
-              <Button size="sm" className="bg-warning text-warning-foreground hover:bg-warning/90" onClick={handleUpgrade}>
-                Upgrade Now
-              </Button>
-            </div>
-          </div>
         )}
 
         {userState === 'paid_active' && (
