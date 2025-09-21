@@ -48,7 +48,7 @@ export default function Pricing() {
         'Follow‑up Q&A by email',
       ],
       cta: 'Request a session',
-      href: '/contact',
+      href: 'mailto:kam.interviewprep@gmail.com?subject=Mock%20Interview%20Request',
       highlight: false,
     },
   ];
