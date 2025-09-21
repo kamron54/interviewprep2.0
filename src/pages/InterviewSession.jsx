@@ -363,6 +363,7 @@ export default function InterviewSession() {
                           muted
                           playsInline
                           className="absolute inset-0 h-full w-full rounded object-cover"
+                          style={{ transform: 'scaleX(-1)' }}
                         />
                       </div>
                     </div>

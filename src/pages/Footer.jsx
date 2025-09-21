@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useProfession } from '../professions/ProfessionContext.jsx';
+import { HashLink } from 'react-router-hash-link';
 
 export default function Footer() {
   const { slug } = useProfession() || {};
@@ -18,8 +19,8 @@ export default function Footer() {
 
         <div>
           <h4 className="text-sm font-semibold text-gray-900">Product</h4>
-          <ul className="mt-3 space-y-2 text-sm text-gray-600">
-            <li><Link to={`${base}/features`} className="hover:text-gray-900">Features</Link></li>
+          <ul className="mt-3 space-y-2 text-sm text-gray-600"> 
+            <li><HashLink smooth to={`${base}#features`} className="hover:text-gray-900">Features</HashLink></li>
             <li><Link to={`${base}/pricing`} className="hover:text-gray-900">Pricing</Link></li>
             <li><Link to={`${base}/resources`} className="hover:text-gray-900">Resources</Link></li>
           </ul>

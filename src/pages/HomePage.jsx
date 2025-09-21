@@ -11,6 +11,7 @@ export default function HomePage() {
   const ctx = useProfession?.();
   const heroTitle = ctx?.config?.hero?.title || 'Ace your healthcare school interviews.';
   const defaultSetupHref = ctx?.slug ? `/${ctx.slug}/setup` : '/dental/setup';
+  const defaultDashboardHref = ctx?.slug ? `/${ctx.slug}/dashboard` : '/dental/dashboard';
   const defaultResourcesHref = ctx?.slug ? `/${ctx.slug}/resources` : '/dental/resources';
 
   return (
@@ -28,7 +29,7 @@ export default function HomePage() {
                 Practice with mock interviews designed specifically for your profession. Get instant, actionable feedback and build confidence for your big day.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
-                <Link to={user ? defaultSetupHref : '/signup'} className="rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800">
+                <Link to={user ? defaultDashboardHref : '/signup'} className="rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800">
                   {user ? 'Start a practice session' : 'Create free account'}
                 </Link>
               </div>
@@ -130,7 +131,7 @@ export default function HomePage() {
           </p>
           <div className="mt-6 flex justify-center">
             <Link
-              to={user ? defaultSetupHref : '/signup'}
+              to={user ? defaultDashboardHref : '/signup'}
               className="rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800"
             >
               {user ? 'Start a session' : 'Create free account'}
