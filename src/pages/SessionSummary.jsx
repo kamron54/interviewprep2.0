@@ -26,6 +26,7 @@ import {
   BarChart3,
   Clock,
   TrendingUp,
+  TrendingDown,
   CheckCircle,
   AlertCircle,
   Download,
@@ -441,8 +442,14 @@ useEffect(() => {
 
             {/* Improvement */}
             <div className="text-center p-4 bg-card rounded-lg border">
-              <TrendingUp className="h-6 w-6 text-primary mx-auto mb-2" />
-              <div className="text-xl font-semibold">+{improvement}%</div>
+              {improvement >= 0 ? (
+                <TrendingUp className="h-6 w-6 text-green-600 mx-auto mb-2" />
+              ) : (
+                <TrendingDown className="h-6 w-6 text-red-600 mx-auto mb-2" />
+              )}
+              <div className="text-xl font-semibold">
+                {improvement >= 0 ? `+${improvement}%` : `${improvement}%`}
+              </div>
               <div className="text-sm text-muted-foreground">Improvement</div>
             </div>
           </div>
