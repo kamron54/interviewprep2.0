@@ -1,2 +1,8 @@
 node_modules
+dist
 .DS_Store
+.vercel
+
+# Secrets — set these in the Vercel dashboard, never commit them
+.env
+.env.*

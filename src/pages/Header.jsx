@@ -3,7 +3,9 @@ import { useEffect, useState } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from '../../firebase';
 import ProgramSwitcher from '../components/ProgramSwitcher';
+import Logo from '../components/Logo';
 import { useProfession } from '../professions/ProfessionContext.jsx';
+import { buttonVariants } from '@/components/ui/button';
 import { Menu, X } from 'lucide-react';
 
 export default function Header() {
@@ -19,6 +21,9 @@ export default function Header() {
     return () => unsub();
   }, []);
 
+  // Close the mobile menu after navigating
+  useEffect(() => { setOpen(false); }, [location.pathname]);
+
   const handleLogout = async () => { await signOut(auth); navigate(base); };
 
   const hideHeader =
@@ -26,18 +31,18 @@ export default function Header() {
     location.pathname.endsWith('/summary') ||
     location.pathname.endsWith('/setup');
 
-  if (hideHeader) return null; 
+  if (hideHeader) return null;
 
   const linkCls = ({ isActive }) =>
     `hover:text-gray-900 ${isActive ? 'text-gray-900 underline underline-offset-4' : 'text-gray-700'}`;
+  const mobileLinkCls = 'block rounded-md px-2 py-2 text-gray-800 hover:bg-gray-100';
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-white/70 backdrop-blur supports-[backdrop-filter]:bg-white/60">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-4">
-          <Link to={base} className="flex items-center gap-2 font-semibold tracking-tight">
-            <span className="inline-block h-8 w-8 rounded-xl bg-gradient-to-br from-teal-500 to-blue-600" />
-            InterviewPrep
+          <Link to={base} aria-label="InterviewPrep home">
+            <Logo />
           </Link>
           <ProgramSwitcher />
         </div>
@@ -51,13 +56,13 @@ export default function Header() {
         <div className="hidden md:flex items-center gap-2">
           {user ? (
             <>
-              <Link to={`${base}/dashboard`} className="rounded-lg border px-3 py-2 text-sm">Dashboard</Link>
-              <button onClick={handleLogout} className="rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">Logout</button>
+              <Link to={`${base}/dashboard`} className={buttonVariants({ variant: 'outline' })}>Dashboard</Link>
+              <button onClick={handleLogout} className={buttonVariants({ variant: 'ghost' })}>Log out</button>
             </>
           ) : (
             <>
-              <Link to="/login" className="rounded-lg px-3 py-2 text-sm hover:bg-gray-100">Log in</Link>
-              <Link to="/signup" className="rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-gray-800">Get started</Link>
+              <Link to="/login" className={buttonVariants({ variant: 'ghost' })}>Log in</Link>
+              <Link to="/signup" className={buttonVariants()}>Get started</Link>
             </>
           )}
         </div>
@@ -74,21 +79,23 @@ export default function Header() {
       </div>
 
       {open && (
-        <div id="mobile-menu" className="md:hidden border-t bg-white px-4 py-4 space-y-2">
-          <NavLink to={`${base}/pricing`} className="block">Pricing</NavLink>
-          <NavLink to={`${base}/resources`} className="block">Resources</NavLink>
-          <NavLink to={`${base}/about`} className="block">About</NavLink>
-          {user ? (
-            <>
-              <Link to={`${base}/dashboard`} className="block">Dashboard</Link>
-              <button onClick={handleLogout} className="block text-left w-full">Logout</button>
-            </>
-          ) : (
-            <>
-              <Link to="/login" className="block">Log in</Link>
-              <Link to="/signup" className="block">Get started</Link>
-            </>
-          )}
+        <div id="mobile-menu" className="md:hidden border-t bg-white px-4 py-3 space-y-1 text-sm">
+          <NavLink to={`${base}/pricing`} className={mobileLinkCls}>Pricing</NavLink>
+          <NavLink to={`${base}/resources`} className={mobileLinkCls}>Resources</NavLink>
+          <NavLink to={`${base}/about`} className={mobileLinkCls}>About</NavLink>
+          <div className="mt-2 flex flex-col gap-2 border-t pt-3">
+            {user ? (
+              <>
+                <Link to={`${base}/dashboard`} className={buttonVariants({ variant: 'outline' })}>Dashboard</Link>
+                <button onClick={handleLogout} className={buttonVariants({ variant: 'ghost' })}>Log out</button>
+              </>
+            ) : (
+              <>
+                <Link to="/login" className={buttonVariants({ variant: 'outline' })}>Log in</Link>
+                <Link to="/signup" className={buttonVariants()}>Get started</Link>
+              </>
+            )}
+          </div>
         </div>
       )}
     </header>

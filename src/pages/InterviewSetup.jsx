@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft } from "lucide-react";
+import usePageTitle from '../lib/usePageTitle';
 
 function ChevronDown(props) {
   return (
@@ -19,6 +20,7 @@ function ChevronDown(props) {
 }
 
 function InterviewSetup() {
+  usePageTitle('Interview Setup');
   const [interviewType, setInterviewType] = useState('random');
   const [mode, setMode] = useState('video');
   const [big3, setBig3] = useState(true);
@@ -50,7 +52,7 @@ function InterviewSetup() {
       profession: professionTag || 'Dental', // fallback if not in a slugged route
       mode,
       big3,
-      questionCount,
+      questionCount: Math.min(10, Math.max(1, Math.round(questionCount) || 1)),
       interviewType, // 'random' | 'custom'
     };
 
@@ -96,7 +98,7 @@ function InterviewSetup() {
           </div>
         </div>
       </header>
-      <main className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+      <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
         <div className="space-y-1">
           <h1 className="text-3xl font-bold text-foreground">Interview Setup</h1>
         </div>
@@ -166,7 +168,9 @@ function InterviewSetup() {
                     max="10"
                     value={questionCount}
                     onChange={(e) => setQuestionCount(Number(e.target.value))}
+                    onBlur={() => setQuestionCount((n) => Math.min(10, Math.max(1, Math.round(n) || 1)))}
                   />
+                  <p className="text-xs text-muted-foreground">Between 1 and 10.</p>
                 </div>               
               </CardContent>
             </Card>
@@ -272,16 +276,21 @@ function InterviewSetup() {
         )}
 
         {/* Start Button */}
-        <div>
+        <div className="space-y-2">
           <Button
             variant="default"
+            size="lg"
             onClick={handleStart}
-            className="w-full !h-auto py-3 px-4 rounded-lg font-large"
+            disabled={interviewType === 'custom' && customQuestions.length === 0}
+            className="w-full"
           >
             Start Interview
           </Button>
+          {interviewType === 'custom' && customQuestions.length === 0 && (
+            <p className="text-center text-xs text-muted-foreground">Add at least one question to start.</p>
+          )}
         </div>
-      </main>
+      </div>
     </div>
   );
 }

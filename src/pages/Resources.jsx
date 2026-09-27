@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
 import { useProfession } from '../professions/ProfessionContext.jsx';
+import usePageTitle from '../lib/usePageTitle';
 
 export default function Resources() {
+  usePageTitle('Resources');
   const { slug } = useProfession() || {};
   const base = slug ? `/${slug}` : '/dental';
 
@@ -12,13 +14,13 @@ export default function Resources() {
   ];
 
   const downloads = [
-    { title: 'Interview Tips (PDF)', href: '/public/resources/interview-tips.pdf' },
-    { title: 'Interview Day Checklist (PDF)',  href: '/public/resources/checklist.pdf' },
-    { title: 'Thank-You Email Samples (PDF)',  href: '/public/resources/thank-you.pdf' },
+    { title: 'Interview Tips (PDF)', href: '/resources/interview-tips.pdf' },
+    { title: 'Interview Day Checklist (PDF)',  href: '/resources/checklist.pdf' },
+    { title: 'Thank-You Email Samples (PDF)',  href: '/resources/thank-you.pdf' },
   ];
 
   return (
-    <main>
+    <div>
       <section className="border-b bg-white">
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
           <h1 className="text-4xl font-semibold tracking-tight text-gray-900">Resources</h1>
@@ -65,6 +67,6 @@ export default function Resources() {
           </div>
         </div>
       </section>
-    </main>
+    </div>
   );
 }

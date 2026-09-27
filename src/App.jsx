@@ -23,6 +23,7 @@ import { ProfessionProvider } from './professions/ProfessionContext';
 import PrivacyPolicy from './pages/privacy';
 import TermsOfService from './pages/terms';
 import { Toaster } from 'sonner';
+import PageLoader from './components/PageLoader';
 
 
 function Protected({ user, children }) {
@@ -45,7 +46,7 @@ function App() {
     return () => unsubscribe();
   }, []);
 
-  if (loading) return <div className="p-10 text-center">Loading...</div>;
+  if (loading) return <PageLoader />;
 
   return (
     <>
@@ -91,7 +92,7 @@ function App() {
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/dental" replace />} />
     </Routes>
-    <Toaster position="top-right" richColors /> {/* 👈 add this */}
+    <Toaster position="top-right" richColors />
    </>
   );
 }

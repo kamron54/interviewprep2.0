@@ -1,14 +1,9 @@
 import { auth } from '../../firebase';
 export async function transcribeAudio(audioBlob) {
-  console.log('🎧 Uploading audioBlob:', audioBlob);
-  console.log('👉 Type:', audioBlob?.type);
-  console.log('👉 Size:', audioBlob?.size);
-  console.log('👉 Is instance of Blob:', audioBlob instanceof Blob);
-
   const formData = new FormData();
   formData.append('file', audioBlob, 'audio.webm');
   formData.append('model', 'whisper-1');  // ← ensure the model is specified
-  
+
   try {
     const token = await auth.currentUser.getIdToken();
     const response = await fetch('/api/transcribe', {
@@ -40,9 +35,13 @@ export async function transcribeAudio(audioBlob) {
 
 export async function getFeedback(question, transcript, profession) {
   try {
+    const token = await auth.currentUser.getIdToken();
     const response = await fetch('/api/feedback', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify({ question, transcript, profession }),
     });
 

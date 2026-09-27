@@ -1,4 +1,4 @@
-import admin from '../firebase-admin';
+import admin, { getUserFromRequest } from '../firebase-admin';
 // api/transcribe.js
 export default async function handler(req, res) {
 
@@ -8,18 +8,9 @@ export default async function handler(req, res) {
   }
 
   // ✅ Verify Firebase ID token
-  const idToken = req.headers.authorization?.split('Bearer ')[1];
-
-  if (!idToken) {
-    return res.status(401).json({ error: 'No token provided' });
-  }
-
-  let decoded;
-  try {
-    decoded = await admin.auth().verifyIdToken(idToken);
-  } catch (err) {
-    console.error('Invalid Firebase ID token', err);
-    return res.status(401).json({ error: 'Invalid token' });
+  const decoded = await getUserFromRequest(req);
+  if (!decoded) {
+    return res.status(401).json({ error: 'Not signed in' });
   }
 
   const userId = decoded.uid;

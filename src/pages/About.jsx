@@ -1,11 +1,10 @@
-import { useProfession } from '../professions/ProfessionContext.jsx';
+import usePageTitle from '../lib/usePageTitle';
 
 export default function About() {
-  const { slug } = useProfession() || {};
-  const base = slug ? `/${slug}` : '/dental';
+  usePageTitle('About');
 
   return (
-    <main>
+    <div>
       {/* Hero */}
       <section className="border-b bg-white">
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
@@ -20,7 +19,7 @@ export default function About() {
       <section className="bg-gray-50">
         <div className="mx-auto grid max-w-7xl grid-cols-1 items-start gap-10 px-4 py-16 sm:px-6 md:grid-cols-[auto,1fr] lg:px-8">
           <img
-            src="/images/kamron.jpg"
+            src="/images/kamron-320.jpg"
             alt="Kamron"
             className="h-24 w-24 rounded-full object-cover ring-2 ring-white shadow md:h-28 md:w-28"
           />
@@ -41,6 +40,6 @@ export default function About() {
           </div>
         </div>
       </section>
-    </main>
+    </div>
   );
 }
