@@ -46,7 +46,7 @@ export default function Pricing() {
     },
     {
       name: 'Premium',
-      price: '$39',
+      price: '$29',
       priceNote: 'one-time',
       desc: '12 months of access, enough for a full application cycle.',
       features: [
