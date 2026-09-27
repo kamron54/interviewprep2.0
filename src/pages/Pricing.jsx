@@ -38,7 +38,7 @@ export default function Pricing() {
       features: [
         '2 full practice sessions',
         'Video or audio recording',
-        'AI scoring and written feedback on every answer',
+        'Scoring and written feedback on every answer',
         'Custom interviews from the question bank',
       ],
       cta: user ? 'Start practicing' : 'Create free account',

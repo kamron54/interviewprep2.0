@@ -12,7 +12,7 @@ export default function Footer() {
       <div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 py-12 sm:px-6 md:grid-cols-4 lg:px-8">
         <div className="md:col-span-2">
           <Logo />
-          <p className="mt-3 max-w-xs text-sm text-gray-600">Mock interview practice for dental and medical school applicants, with AI feedback on every answer.</p>
+          <p className="mt-3 max-w-xs text-sm text-gray-600">Mock interview practice for dental and medical school applicants, with instant feedback on every answer.</p>
         </div>
 
         <div>
