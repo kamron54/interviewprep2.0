@@ -10,9 +10,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import PageLoader from '../components/PageLoader';
+import usePageTitle from '../lib/usePageTitle';
 import { ChevronLeft, Clock, Mic, MicOff, SkipForward, CheckCircle2, Camera } from 'lucide-react';
 
 export default function InterviewSession() {
+  usePageTitle('Practice Session');
   const location = useLocation();
   const navigate = useNavigate();
   const { config = {} } = location.state || {};
@@ -40,6 +43,11 @@ export default function InterviewSession() {
   const audioChunksRef = useRef([]);
   const videoRef = useRef(null);
   const recordingTimerRef = useRef(null);
+
+  // Opened directly or refreshed: there's no setup config, so start over from setup
+  useEffect(() => {
+    if (!location.state?.config) navigate('../setup', { replace: true });
+  }, [location.state, navigate]);
 
   // elapsed timer
   useEffect(() => {
@@ -305,9 +313,9 @@ export default function InterviewSession() {
             </Button>
           </div>
         </header>
-        <main className="container mx-auto px-4 py-10">
-          <Card><CardContent className="p-6 text-center">Loading questions…</CardContent></Card>
-        </main>
+        <div className="container mx-auto px-4 py-10">
+          <PageLoader label="Loading questions…" />
+        </div>
       </div>
     );
   }
@@ -330,7 +338,7 @@ export default function InterviewSession() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8">
         {/* Progress */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
@@ -455,7 +463,7 @@ export default function InterviewSession() {
             </Button>
           )}
         </div>
-      </main>
+      </div>
     </div>
   );
 }

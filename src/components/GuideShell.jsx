@@ -1,6 +1,9 @@
+import usePageTitle from '../lib/usePageTitle';
+
 export default function GuideShell({ title, subtitle, children }) {
+  usePageTitle(title);
   return (
-    <main className="bg-gray-50">
+    <div className="bg-gray-50">
       <section className="border-b bg-white">
         <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
           <h1 className="text-3xl font-semibold tracking-tight text-gray-900">{title}</h1>
@@ -25,6 +28,6 @@ export default function GuideShell({ title, subtitle, children }) {
           </div>
         </div>
       </section>
-    </main>
+    </div>
   );
 }

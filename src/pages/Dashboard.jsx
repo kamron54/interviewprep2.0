@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { onAuthStateChanged } from 'firebase/auth';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { onAuthStateChanged, sendEmailVerification } from 'firebase/auth';
 import { auth, db } from '../../firebase';
-import { doc, getDoc, updateDoc, collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
+import { toast } from 'sonner';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import Card from '../components/Card';
-import { Trophy, BookOpen, Target, Play, Star, AlertTriangle, Crown, Gift, BarChart3 } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import PageLoader from '../components/PageLoader';
+import { startCheckout } from '../lib/checkout';
+import usePageTitle from '../lib/usePageTitle';
+import { Trophy, BookOpen, Target, Play, Star, AlertTriangle, Crown, Gift, BarChart3, MailCheck } from "lucide-react";
 
 // ---- helpers (no hooks) -------------------------------------------------
 function toDate(val) {
@@ -37,14 +41,28 @@ function daysLeft(end) {
 }
 
 export default function Dashboard() {
+  usePageTitle('Dashboard');
   const [userData, setUserData] = useState(null);
   const [recentSessions, setRecentSessions] = useState([]);
   const [isVerified, setIsVerified] = useState(false);
+  const [checkingVerification, setCheckingVerification] = useState(false);
   const { profession } = useParams();
   const base = profession ? `/${profession}` : '/dental';
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const markVerified = async (user) => {
+    setIsVerified(true);
+    try {
+      await updateDoc(doc(db, 'users', user.uid), { emailVerified: true });
+    } catch (err) {
+      console.warn('Could not update emailVerified flag:', err);
+    }
+  };
 
   useEffect(() => {
+    let cancelled = false;
+    let unsubUserDoc = null;
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
         navigate('/login');
@@ -52,70 +70,83 @@ export default function Dashboard() {
       }
       try {
         await user.reload();
-        const nowVerified = user.emailVerified === true;
-        setIsVerified(nowVerified);
-        if (nowVerified) {
-          try {
-            await updateDoc(doc(db, 'users', user.uid), { emailVerified: true });
-          } catch (err) {
-            console.warn('Could not update emailVerified flag:', err);
-          }
-        }
-        const docSnap = await getDoc(doc(db, 'users', user.uid));
-        if (docSnap.exists()) {
-          setUserData(docSnap.data());
-           // Fetch recent saved sessions (lightweight)
-            try {
-              const sessRef = collection(doc(db, 'users', user.uid), 'sessions');
-              const q = query(sessRef, orderBy('createdAt', 'desc'), limit(5));
-              const s = await getDocs(q);
-              const items = s.docs.map(d => ({ id: d.id, ...d.data() }));
-              setRecentSessions(items);
-            } catch (e) {
-             console.warn('Could not load sessions:', e);
-            }
-        } else {
-          console.warn('User data not found.');
+        if (cancelled) return;
+        if (user.emailVerified) await markVerified(user);
+
+        // Live subscription so a Stripe payment shows up as soon as the webhook writes it
+        unsubUserDoc?.();
+        unsubUserDoc = onSnapshot(doc(db, 'users', user.uid), (snap) => {
+          if (snap.exists()) setUserData(snap.data());
+          else console.warn('User data not found.');
+        });
+
+        // Fetch recent saved sessions (lightweight)
+        try {
+          const sessRef = collection(doc(db, 'users', user.uid), 'sessions');
+          const q = query(sessRef, orderBy('createdAt', 'desc'), limit(5));
+          const s = await getDocs(q);
+          setRecentSessions(s.docs.map(d => ({ id: d.id, ...d.data() })));
+        } catch (e) {
+          console.warn('Could not load sessions:', e);
         }
       } catch (e) {
         console.error('Dashboard init error:', e);
       }
     });
-    return () => unsubscribe();
+    return () => {
+      cancelled = true;
+      unsubscribe();
+      unsubUserDoc?.();
+    };
   }, [navigate]);
+
+  // Returning from Stripe Checkout
+  useEffect(() => {
+    if (searchParams.get('upgraded') === '1') {
+      toast.success('Payment received. Welcome to Premium!');
+      searchParams.delete('upgraded');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const handleUpgrade = async () => {
     try {
-      const uid = auth.currentUser && auth.currentUser.uid;
-      if (!uid) throw new Error('User not authenticated');
-
-      const res = await fetch('/api/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uid })
-      });
-
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error('Server error: ' + text);
-      }
-
-      const data = await res.json();
-      window.location.href = data.url;
+      await startCheckout(profession);
     } catch (err) {
       console.error('Checkout redirect failed:', err);
-      alert('Something went wrong. Please try again.');
+      toast.error("We couldn't open checkout. Please try again.");
+    }
+  };
+
+  const handleResendVerification = async () => {
+    try {
+      await sendEmailVerification(auth.currentUser);
+      toast.success(`Verification email sent to ${auth.currentUser.email}`);
+    } catch (err) {
+      console.error('Resend verification failed:', err);
+      toast.error(err.code === 'auth/too-many-requests'
+        ? 'Please wait a minute before requesting another email.'
+        : "We couldn't send the email. Please try again.");
+    }
+  };
+
+  const handleCheckVerified = async () => {
+    setCheckingVerification(true);
+    try {
+      await auth.currentUser.reload();
+      if (auth.currentUser.emailVerified) {
+        await markVerified(auth.currentUser);
+        toast.success('Email verified. You’re all set!');
+      } else {
+        toast.error('Not verified yet. Click the link in the email, then try again.');
+      }
+    } finally {
+      setCheckingVerification(false);
     }
   };
 
   if (!userData) {
-    return (
-      <div className="mx-auto max-w-7xl px-4 py-12">
-        <Card className="rounded-2xl border">
-          <div className="p-6"><p>Checking access…</p></div>
-        </Card>
-      </div>
-    );
+    return <PageLoader label="Loading your dashboard…" />;
   }
 
   // ---- derive trial + subscription windows (reads only) ------------------
@@ -147,12 +178,12 @@ export default function Dashboard() {
                           : 0;
   const averageScore = Number.isFinite(userData?.rollingAverageScore) ? Math.round(userData.rollingAverageScore)
                     : Number.isFinite(userData?.lastAverageScore)    ? Math.round(userData.lastAverageScore)
-                    : 0;
+                    : null;
 
   const kpis = [
     { label: 'Sessions Completed',  value: sessionsCompleted,  Icon: Trophy,  color: 'text-primary' },
-    { label: 'Questions Practiced', value: questionsPracticed, Icon: BookOpen, color: 'text-medical-teal' },
-    { label: 'Average Score',       value: `${averageScore}%`, Icon: Target,   color: 'text-medical-blue' },
+    { label: 'Questions Practiced', value: questionsPracticed, Icon: BookOpen, color: 'text-teal-600' },
+    { label: 'Average Score',       value: averageScore == null ? '—' : `${averageScore}%`, Icon: Target, color: 'text-blue-600' },
   ];
 
   // Free Trial 2 session limit
@@ -162,13 +193,25 @@ export default function Dashboard() {
 
   if (!isVerified) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-12 space-y-6">
-        <Card className="rounded-2xl border-2 border-yellow-400">
-          <div className="p-6">
-            <h2 className="text-xl font-semibold text-yellow-800">Verify your email to unlock the app</h2>
-            <p className="mt-1 text-yellow-900">We’ve sent a verification link to your inbox. Once verified, refresh this page.</p>
-            <p className="mt-2 text-sm text-yellow-900">Tip: check your spam folder if you don’t see it.</p>
+      <div className="mx-auto max-w-lg px-4 py-16">
+        <Card className="rounded-2xl p-8 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+            <MailCheck className="h-6 w-6 text-primary" />
           </div>
+          <h1 className="mt-4 text-xl font-semibold text-foreground">Verify your email</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            We sent a verification link to <span className="font-medium text-foreground">{auth.currentUser?.email}</span>.
+            Click it, then come back here.
+          </p>
+          <div className="mt-6 flex flex-col gap-2">
+            <Button onClick={handleCheckVerified} disabled={checkingVerification}>
+              {checkingVerification ? 'Checking…' : 'I’ve verified my email'}
+            </Button>
+            <Button variant="ghost" onClick={handleResendVerification}>
+              Resend email
+            </Button>
+          </div>
+          <p className="mt-4 text-xs text-muted-foreground">Don’t see it? Check your spam or promotions folder.</p>
         </Card>
       </div>
     );
@@ -178,7 +221,7 @@ export default function Dashboard() {
   const statePill = (() => {
     switch (userState) {
       case 'free_trial_active':
-        return { text: `Free Trial`, Icon: Star, color: 'text-warning', bg: 'bg-warning/10', border: 'border-warning/20' };
+        return { text: `Free Trial`, Icon: Star, color: 'text-amber-700', bg: 'bg-warning/10', border: 'border-warning/30' };
       case 'free_trial_expired':
         return { text: 'Trial Expired', Icon: AlertTriangle, color: 'text-destructive', bg: 'bg-destructive/10', border: 'border-destructive/20' };
       case 'paid_active':
@@ -186,12 +229,12 @@ export default function Dashboard() {
       case 'paid_cancelled':
         return { text: 'Subscription Ended', Icon: Gift, color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200' };
       default:
-        return { text: 'Free Trial', Icon: Star, color: 'text-warning', bg: 'bg-warning/10', border: 'border-warning/20' };
+        return { text: 'Free Trial', Icon: Star, color: 'text-amber-700', bg: 'bg-warning/10', border: 'border-warning/30' };
     }
   })();
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-0 pb-10">
+    <div className="mx-auto max-w-7xl px-4 py-0 pb-10">
       {/* Header (clean; no alerts inside) */}
       <header className="border-b border-border bg-card">
         <div className="container mx-auto px-0 md:px-4 py-6">
@@ -217,24 +260,10 @@ export default function Dashboard() {
                 <span className={`text-sm font-medium ${statePill.color}`}>{statePill.text}</span>
               </span>
 
-              {/* Start button (solid primary for visibility) */}
-              <Button
-                className="bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-60 disabled:pointer-events-none"
-                onClick={() => {
-                  if (locked) return; // guard; disabled below
-                  const p = localStorage.getItem('lastProfession');
-                  if (p) {
-                    navigate('/' + p + '/setup');
-                  } else {
-                    navigate('/setup');
-                  }
-                }}
-                disabled={locked}
-              >
-                <span className="inline-flex items-center">
-                  <Play className="h-4 w-4 mr-2" />
-                  {locked ? 'Upgrade to Practice' : 'Start Practice'}
-                </span>
+              {/* Start button — sends locked users to checkout instead of dead-ending */}
+              <Button onClick={() => (locked ? handleUpgrade() : navigate(`${base}/setup`))}>
+                {locked ? <Crown className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                {locked ? 'Upgrade to Practice' : 'Start Practice'}
               </Button>
             </div>
           </div>
@@ -279,7 +308,7 @@ export default function Dashboard() {
                   <p className="mt-2 text-sm text-muted-foreground max-w-md">
                     {userState === 'paid_cancelled'
                       ? 'Your subscription has ended. Reactivate to access your complete history and analytics.'
-                      : 'Upgrade to access your complete practice history and detailed performance analytics.'}
+                      : 'Upgrade to keep practicing and see your saved sessions and scores.'}
                   </p>
                 </div>
 
@@ -379,7 +408,7 @@ export default function Dashboard() {
                 <div className="flex items-center space-x-2">
                   <Star className="h-5 w-5 text-warning" />
                   <span className="font-medium text-foreground">
-                    Your free trial ends in {trialDaysLabel}
+                    {trialSessionsLeft} free session{trialSessionsLeft === 1 ? '' : 's'} left · trial ends in {trialDaysLabel}
                   </span>
                 </div>
                 <Button
@@ -408,6 +437,6 @@ export default function Dashboard() {
           </div>
         )}
       </section>
-    </main>
+    </div>
   );
 }

@@ -1,6 +1,7 @@
 const medical = {
   slug: 'medical',
   displayName: 'Medical School Admissions',
+  shortName: 'Medical',
   hero: {
     title: 'Nail Your Medical School Interviews.',
   },

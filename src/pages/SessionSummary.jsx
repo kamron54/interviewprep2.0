@@ -15,6 +15,7 @@ import {
   AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner"; // or your toast of choice
+import usePageTitle from '../lib/usePageTitle';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -27,32 +28,37 @@ import {
   Clock,
   TrendingUp,
   TrendingDown,
-  CheckCircle,
   AlertCircle,
-  Download,
+  Bookmark,
   FileText,
+  Loader2,
+  MicOff,
   Copy as CopyIcon,
   Video as VideoIcon,
 } from 'lucide-react';
 
 // --- heuristics to ignore clear hallucinations/noise ---
+// Whisper sometimes "hears" these phrases in silence. Longest first, so
+// "thank you for watching" is removed before "thank you".
 const hallucinatedPhrases = [
+  "thank you so much for watching",
   "thank you for watching",
-  "share this video",
-  "subscribe",
+  "thanks for watching",
   "like and subscribe",
-  "I'm still here. I'm still here. I'm still here.",
-  "Shh.",
-  "Thank you so much for watching",
-  "Thank you.",
+  "share this video",
   "follow me on",
-  "Thank you",
+  "i'm still here",
+  "thank you",
+  "subscribe",
+  "shh",
 ];
 
+// Only reject a transcript that is essentially nothing but those phrases —
+// real answers often start with "Thank you for the question…".
 function isMeaningfulTranscript(text) {
-  if (!text || text.trim().length === 0) return false;
-  const lower = text.trim().toLowerCase();
-  return !hallucinatedPhrases.some((p) => lower.includes(p));
+  let rest = (text || '').toLowerCase().replace(/’/g, "'").replace(/[^a-z'\s]/g, ' ');
+  for (const p of hallucinatedPhrases) rest = rest.split(p).join(' ');
+  return rest.split(/\s+/).filter(Boolean).length >= 3;
 }
 
 // --- scoring helpers -------------------------------------------------------
@@ -96,6 +102,7 @@ function normalizeFeedback(raw) {
 }
 
 export default function SessionSummary() {
+  usePageTitle('Session Summary');
   const { profession: slug } = useParams();
   const base = slug ? `/${slug}` : '/dental';
 
@@ -150,9 +157,14 @@ const overallAvg = useMemo(() => {
   return Math.round(sum / scoredItems.length);
 }, [scoredItems]);
 
-const [improvement, setImprovement] = useState(0);
+// undefined = not computed yet (or viewing a saved session); null = no previous session to compare against
+const [improvement, setImprovement] = useState(undefined);
+const isProcessing = !isReadonly && results.length === 0;
+const hasScore = scoredItems.length > 0;
 
 useEffect(() => {
+  // Saved sessions are read-only: no stats writes, no comparison with the latest session
+  if (isReadonly) return;
   // Only run after we've processed the whole session
   if (results.length === 0) return;                 // wait for processing to finish
   if (!Number.isFinite(overallAvg)) return;
@@ -169,7 +181,7 @@ useEffect(() => {
 
     // Improvement = current - previous session avg
     const prevSessionAvg = Number.isFinite(data.lastAverageScore) ? data.lastAverageScore : null;
-    setImprovement(prevSessionAvg == null ? 0 : Math.round(overallAvg - prevSessionAvg));
+    setImprovement(prevSessionAvg == null ? null : Math.round(overallAvg - prevSessionAvg));
 
     // If we don't have a sessionId, don't write aggregates (prevents double counts on refresh/deeplink)
     if (!sessionId) {
@@ -194,14 +206,20 @@ useEffect(() => {
       ...(sessionId ? { processedSessionIds: arrayUnion(sessionId) } : {}),
     });
   }).catch(console.error);
-}, [overallAvg, sessionId, results.length]);
+}, [overallAvg, sessionId, results.length, isReadonly]);
 
   // Copy transcript helper
   const copyTranscript = async (text) => {
     try {
       await navigator.clipboard.writeText(text || '');
+      toast.success('Transcript copied');
     } catch { /* noop */ }
   };
+
+  // Opened directly or refreshed: recordings only live in memory, so there's nothing to show
+  useEffect(() => {
+    if (!isReadonly && recordings.length === 0) navigate(`${base}/dashboard`, { replace: true });
+  }, [isReadonly, recordings.length, base, navigate]);
 
   // Process responses sequentially (keeps your current behavior)
   // Normal (live) processing path — skip entirely in read-only mode
@@ -230,28 +248,26 @@ useEffect(() => {
           const transcriptResult = await transcribeAudio(audioBlob);
 
           if (transcriptResult.limitReached) {
-            alert(
+            toast.error(
               transcriptResult.error ||
-                "We’ve noticed unusually heavy usage on your account. To ensure fair access for all users, we’ve temporarily paused usage. If you believe this is a mistake, please contact support."
+                "We’ve noticed unusually heavy usage on your account. To ensure fair access for all users, we’ve temporarily paused usage. If you believe this is a mistake, please contact support.",
+              { duration: 10000 }
             );
             navigate(`${base}/dashboard`);
             return;
           }
 
-          let transcript = transcriptResult.transcript || '';
-          let feedback = null;
+          const transcript = transcriptResult.transcript || '';
 
           if (isMeaningfulTranscript(transcript)) {
-            feedback = await getFeedback(item.question, transcript, profession);
+            const feedback = await getFeedback(item.question, transcript, profession);
+            all.push({ ...item, originalIndex: i, transcript, feedback });
           } else {
-            feedback = 'No meaningful response detected. Skipping feedback.';
-            transcript = '';
+            all.push({ ...item, originalIndex: i, transcript: '', feedback: null, noSpeech: true });
           }
-
-          all.push({ ...item, originalIndex: i, transcript, feedback });
         } catch (err) {
           console.error(`Error processing response ${i + 1}`, err);
-          all.push({ ...item, originalIndex: i, transcript: 'Error', feedback: 'Error generating feedback' });
+          all.push({ ...item, originalIndex: i, transcript: '', feedback: null, error: true });
         }
       }
 
@@ -278,6 +294,8 @@ useEffect(() => {
       question: it.question,
       tip: it.tip,
       skipped: !!it.skipped,
+      noSpeech: !!it.noSpeech,
+      error: !!it.error,
       transcript: it.transcript || '',
       feedback: it.feedback || null,
       // no audioUrl/videoUrl in saved sessions (intentionally)
@@ -301,6 +319,8 @@ useEffect(() => {
        question: r.question,
        tip: r.tip || '',
        skipped: !!r.skipped,
+       ...(r.noSpeech ? { noSpeech: true } : {}),
+       ...(r.error ? { error: true } : {}),
        transcript: r.skipped ? '' : (r.transcript || ''),
        feedback: fb && !fb.legacyHtml ? {
          overallScore: fb.overallScore ?? 0,
@@ -354,7 +374,7 @@ useEffect(() => {
     <div className="min-h-screen bg-background">
       {/* Local page header (global Header is hidden on /summary) */}
       <header className="border-b border-border bg-card">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="container mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
@@ -364,14 +384,16 @@ useEffect(() => {
             >
               <ChevronLeft className="h-4 w-4 mr-2" /> Back to Dashboard
             </Button>
-            <Badge variant="outline">Practice Session Complete</Badge>
+            <Badge variant="outline" className="hidden sm:inline-flex">
+              {isReadonly ? 'Saved session' : 'Practice session complete'}
+            </Badge>
           </div>
           <div className="flex items-center gap-2">
             {results.length > 0 && !isReadonly && (
               <AlertDialog open={saveOpen} onOpenChange={setSaveOpen}>
                 <AlertDialogTrigger asChild>
                   <Button variant="outline">
-                    <Download className="h-4 w-4 mr-2" /> Save Session
+                    <Bookmark className="h-4 w-4 mr-2" /> Save Session
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
@@ -405,24 +427,40 @@ useEffect(() => {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8">
         {/* Overview */}
         <Card className="mb-8">
           <CardHeader className="text-center">
             <div className="mx-auto w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
               <Award className="h-10 w-10 text-primary" />
             </div>
-            <CardTitle className="text-2xl">Session Complete!</CardTitle>
-            <p className="text-muted-foreground">Here's your detailed feedback and performance analysis</p>
+            <CardTitle className="text-2xl">
+              {isReadonly ? (saved?.title || 'Saved session') : 'Session complete'}
+            </CardTitle>
+            <p className="text-muted-foreground">
+              {isReadonly ? 'Your saved scores, transcripts, and feedback' : 'Here’s your feedback on each answer'}
+            </p>
           </CardHeader>
 
-            <div className="text-center mb-6">
-              <div className="text-4xl font-bold text-foreground mb-2">
-                {overallAvg}%
+          <div className="mx-auto mb-6 max-w-md px-6 text-center">
+            {isProcessing ? (
+              <div className="flex flex-col items-center gap-2 py-2 text-muted-foreground">
+                <Loader2 className="h-8 w-8 animate-spin" aria-hidden="true" />
+                <p>Analyzing your answers…</p>
               </div>
-              <p className="text-muted-foreground">Overall Score</p>
-              <Progress value={overallAvg} className="mt-4 h-3" />
-            </div>
+            ) : hasScore ? (
+              <>
+                <div className="text-4xl font-bold text-foreground mb-2">{overallAvg}%</div>
+                <p className="text-muted-foreground">Overall Score</p>
+                <Progress value={overallAvg} className="mt-4 h-3" />
+              </>
+            ) : (
+              <>
+                <div className="text-4xl font-bold text-muted-foreground mb-2">—</div>
+                <p className="text-muted-foreground">No answers were scored this session</p>
+              </>
+            )}
+          </div>
 
           <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -440,17 +478,19 @@ useEffect(() => {
               <div className="text-sm text-muted-foreground">Questions</div>
             </div>
 
-            {/* Improvement */}
+            {/* Improvement vs. previous session (points, not percent) */}
             <div className="text-center p-4 bg-card rounded-lg border">
-              {improvement >= 0 ? (
-                <TrendingUp className="h-6 w-6 text-primary-600 mx-auto mb-2" />
+              {improvement != null && improvement < 0 ? (
+                <TrendingDown className="h-6 w-6 text-primary mx-auto mb-2" />
               ) : (
-                <TrendingDown className="h-6 w-6 text-primary-600 mx-auto mb-2" />
+                <TrendingUp className="h-6 w-6 text-primary mx-auto mb-2" />
               )}
               <div className="text-xl font-semibold">
-                {improvement >= 0 ? `+${improvement}%` : `${improvement}%`}
+                {improvement == null ? '—' : `${improvement >= 0 ? '+' : ''}${improvement} pts`}
               </div>
-              <div className="text-sm text-muted-foreground">Improvement</div>
+              <div className="text-sm text-muted-foreground">
+                {improvement === null ? 'First scored session' : 'vs. last session'}
+              </div>
             </div>
           </div>
           </CardContent>
@@ -488,7 +528,8 @@ useEffect(() => {
                     {(() => {
   const fb = normalizeFeedback(item.feedback);
   if (item.skipped) return <Badge variant="destructive">Skipped</Badge>;
-  if (!fb) return <Badge variant="secondary">No score</Badge>;
+  if (item.noSpeech) return <Badge variant="secondary">No answer detected</Badge>;
+  if (!fb) return <Badge variant="secondary">Not scored</Badge>;
   if (fb.legacyHtml) return <Badge variant="secondary">Feedback</Badge>;
   const s = Math.round(fb.overallScore || 0);
   const variant = s >= 80 ? 'default' : s >= 70 ? 'secondary' : 'destructive';
@@ -547,8 +588,22 @@ useEffect(() => {
                     </div>
                   )}
 
+                  {/* Couldn't score this answer */}
+                  {!item.skipped && (item.noSpeech || item.error) && (
+                    <div className="flex gap-3 rounded-lg border bg-muted/40 p-3 text-sm">
+                      {item.noSpeech
+                        ? <MicOff className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
+                        : <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />}
+                      <p className="text-muted-foreground">
+                        {item.noSpeech
+                          ? 'We couldn’t hear an answer in this recording. Check that your microphone is working and try this question again in your next session.'
+                          : 'Something went wrong while analyzing this answer, so it wasn’t scored. Your other answers weren’t affected.'}
+                      </p>
+                    </div>
+                  )}
+
                   {/* Transcript & Feedback */}
-                  {!item.skipped && (
+                  {!item.skipped && !item.noSpeech && !item.error && (
                     <div className="space-y-3">
                       <div className="rounded-lg border bg-gray-50 p-3">
                         <p className="font-medium text-sm flex items-center gap-2 mb-1">
@@ -619,7 +674,7 @@ useEffect(() => {
             ))}
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
 }

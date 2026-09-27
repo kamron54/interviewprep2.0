@@ -18,7 +18,7 @@ export default function ProgramSwitcher() {
   const current = useProfession?.()?.slug;
 
   const options = useMemo(() =>
-    Object.values(professions).map(p => ({ slug: p.slug, label: p.displayName || p.slug })),
+    Object.values(professions).map(p => ({ slug: p.slug, label: p.displayName || p.slug, short: p.shortName || p.displayName || p.slug })),
   []);
 
   const active = options.find(o => o.slug === current) || options[0];
@@ -39,7 +39,8 @@ export default function ProgramSwitcher() {
             focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500
           "
         >
-          <span>{active?.label}</span>
+          <span className="sm:hidden">{active?.short}</span>
+          <span className="hidden sm:inline">{active?.label}</span>
           <ChevronDown className="h-4 w-4 text-gray-500" />
         </Listbox.Button>
 

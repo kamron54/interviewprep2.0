@@ -1,8 +1,11 @@
+import usePageTitle from '../lib/usePageTitle';
+
 export default function TermsOfService() {
+  usePageTitle('Terms of Service');
   const EFFECTIVE_DATE = "September 7, 2025"; // Update as needed
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
       <header className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight text-gray-900">Terms of Service</h1>
         <p className="mt-2 text-sm text-gray-600">Effective Date: {EFFECTIVE_DATE}</p>
@@ -116,6 +119,6 @@ export default function TermsOfService() {
           </a>
         </address>
       </section>
-    </main>
+    </div>
   );
 }
