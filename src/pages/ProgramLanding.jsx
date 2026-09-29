@@ -7,7 +7,7 @@ import ProgramIcon from '../components/ProgramIcon';
 import WaitlistForm from '../components/WaitlistForm';
 import {
   COMMON_FAQS, CtaSection, FaqSection, FeaturesSection, FounderSection, HowItWorksSection,
-  ReviewerSection, SectionHeading, StatsRow,
+  ReviewerSection, SectionHeading, StatsRow, TipsGrid,
 } from '../components/MarketingSections';
 import { getProgram, livePrograms, PROGRAM_ALIASES } from '../professions/index.js';
 import { useAccount } from '../lib/account';
@@ -43,6 +43,8 @@ function LiveProgram({ program }) {
   const { user } = useAccount();
   const { landing } = program;
   const startHref = user ? '/dashboard' : `/signup?program=${program.slug}`;
+  // Founder-written tips (dental) sit under the founder story instead of in their own section
+  const founderTips = landing.credibility === 'founder' && landing.tips?.length > 0;
 
   return (
     <div>
@@ -109,19 +111,17 @@ function LiveProgram({ program }) {
         </section>
       )}
 
-      {/* Tips */}
-      {landing.tips?.length > 0 && (
+      {/* Tips: the founder's own (story + tips together), or a program's general tips */}
+      {founderTips ? (
+        <FounderSection>
+          <h3 className="mt-16 text-center text-2xl font-semibold tracking-tight text-gray-900">{landing.tipsTitle}</h3>
+          <TipsGrid tips={landing.tips} />
+        </FounderSection>
+      ) : landing.tips?.length > 0 && (
         <section className="border-t bg-white">
           <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
             <SectionHeading title={landing.tipsTitle} />
-            <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-              {landing.tips.map((t) => (
-                <div key={t.title} className="rounded-2xl border p-6">
-                  <h3 className="text-base font-semibold text-gray-900">{t.title}</h3>
-                  <p className="mt-2 text-sm text-gray-600">{t.body}</p>
-                </div>
-              ))}
-            </div>
+            <TipsGrid tips={landing.tips} />
           </div>
         </section>
       )}
@@ -129,9 +129,9 @@ function LiveProgram({ program }) {
       <FeaturesSection audience={landing.audience} />
       <HowItWorksSection />
 
-      {landing.reviewer
+      {!founderTips && (landing.reviewer
         ? <ReviewerSection reviewer={landing.reviewer} />
-        : <FounderSection variant={landing.credibility === 'founder' ? 'full' : 'short'} />}
+        : <FounderSection variant={landing.credibility === 'founder' ? 'full' : 'short'} />)}
 
       <FaqSection items={[...(landing.faqs || []), ...COMMON_FAQS]} />
 

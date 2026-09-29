@@ -104,8 +104,28 @@ export function HowItWorksSection() {
   );
 }
 
+// Numbered tip cards, two per row so longer tips stay readable
+export function TipsGrid({ tips }) {
+  return (
+    <div className="mx-auto mt-10 grid max-w-5xl gap-6 md:grid-cols-2">
+      {tips.map((t, i) => (
+        <div key={t.title} className="rounded-2xl border bg-white p-6">
+          <div className="flex items-center gap-3">
+            <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-teal-50 text-xs font-semibold text-teal-700">
+              {i + 1}
+            </span>
+            <h3 className="text-base font-semibold text-gray-900">{t.title}</h3>
+          </div>
+          <p className="mt-3 text-sm leading-6 text-gray-600">{t.body}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // variant 'full': the founder story (homepage, dental). 'short': one line for other programs.
-export function FounderSection({ variant = 'full' }) {
+// children render below the story in the same section (dental puts Kamron's tips there).
+export function FounderSection({ variant = 'full', children }) {
   if (variant === 'short') {
     return (
       <section className="border-t bg-gray-50">
@@ -122,8 +142,8 @@ export function FounderSection({ variant = 'full' }) {
 
   return (
     <section className="border-t bg-gray-50">
-      <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
-        <div className="flex flex-col items-center gap-6 text-center sm:flex-row sm:items-start sm:text-left">
+      <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-3xl flex-col items-center gap-6 text-center sm:flex-row sm:items-start sm:text-left">
           <img
             src="/images/kamron-320.jpg"
             alt="Kamron, founder of InterviewPrep"
@@ -139,6 +159,7 @@ export function FounderSection({ variant = 'full' }) {
             </Link>
           </div>
         </div>
+        {children}
       </div>
     </section>
   );
