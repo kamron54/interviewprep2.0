@@ -16,7 +16,7 @@ const dental = {
     reviewer: null, // { name, role, photo }: a real student who reviewed this program's questions
     formats: [
       { title: 'One-on-one and panel interviews', body: 'Most dental schools use conversational interviews with faculty, current students, or admissions staff.' },
-      { title: 'Multiple mini interviews (MMI)', body: 'Some schools use short, timed stations built around ethical and situational scenarios.' },
+      { title: 'Open-file vs. closed-file', body: 'Some interviewers have read your application; others know only your name. Be ready to tell your story from scratch either way.' },
       { title: 'The “Big 3”', body: 'Tell me about yourself, why dentistry, and why our school. Expect to answer all three.' },
     ],
     sampleQuestions: [
