@@ -142,8 +142,7 @@ export default function HomePage() {
             <div>
               <h2 className="text-2xl font-semibold tracking-tight text-gray-900">Built by a dental student who’s been through it</h2>
               <p className="mt-3 text-gray-600">
-                I’m Kamron, a student at UCSF School of Dentistry. During my application cycle I was accepted to schools
-                such as UPenn, Tufts, and UCSF. I built InterviewPrep to be the tool I wish I’d had when I was applying.
+                I'm Kamron, a student at UCSF School of Dentistry. During my application cycle, I went through the interview process at multiple top dental schools. I built InterviewPrep to be the tool I wish I'd had when I was applying.
               </p>
               <Link to={`${base}/about`} className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-gray-900 hover:underline">
                 More about me <ArrowRight className="h-4 w-4" />
