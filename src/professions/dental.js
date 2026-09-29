@@ -22,7 +22,7 @@ const dental = {
     sampleQuestions: [
       'What are your three greatest strengths?',
       'Tell me about a time you failed and what you learned from it.',
-      'What do you think are the biggest challenges facing the dental profession today?',
+      'What do you think are the biggest challenges facing dentistry today?',
       'What would you do if a patient could not afford a necessary procedure?',
       'What would you do if you saw a classmate cheating on an exam?',
     ],
