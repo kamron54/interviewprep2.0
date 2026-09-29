@@ -28,7 +28,7 @@ export default function About() {
             <h2 className="text-base font-semibold text-gray-900">Hi, I’m Kamron</h2>
             <div className="mt-3 space-y-4 text-sm leading-6 text-gray-700">
               <p>
-                I'm currently a student at UCSF School of Dentistry. During my application process, I interviewed at several highly competitive programs and know firsthand how intimidating it can be. I built<strong>InterviewPrep</strong> because I wanted to create the tool I wish I'd had when I was applying.
+                I'm currently a student at UCSF School of Dentistry. During my application process, I interviewed at several highly competitive programs and know firsthand how intimidating it can be. I built <strong>InterviewPrep</strong> because I wanted to create the tool I wish I'd had when I was applying.
               </p>
               <p className="text-xs text-gray-500">
                 If you ever want to chat or ask me any questions, you can reach me at <a className="underline" href="mailto:kam.interviewprep@gmail.com">kam.interviewprep@gmail.com</a>
