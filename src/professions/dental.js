@@ -33,16 +33,16 @@ const dental = {
         body: 'Share how you discovered dentistry, what parts of it specifically interest you (e.g., long-term patient relationships, public health, surgical precision), and what moments made you feel like “this is the right fit.”',
       },
       {
+        title: 'Expect questions about teamwork',
+        body: 'You probably won’t be asked about drilling a tooth, but you will be asked about how you function in teams. Think about school projects, work experiences, or volunteer settings where collaboration, reliability, or conflict resolution came up.',
+      },
+      {
         title: 'Reflect on exposure',
         body: 'Whether you shadowed one general dentist or explored multiple specialties, you should be able to speak meaningfully about what you observed. It’s less about how much you saw and more about how you processed it. What surprised you? What challenged your assumptions?',
       },
       {
         title: 'Communication & trust matter',
         body: 'Dentists work closely with people who are often anxious or in pain. You may get questions about how you’d handle a nervous patient, explain a difficult procedure, or work with someone who doesn’t follow through on care. Think of times you built trust or navigated tough conversations.',
-      },
-      {
-        title: 'Expect questions about teamwork',
-        body: 'You probably won’t be asked about drilling a tooth, but you will be asked about how you function in teams. Think about school projects, work experiences, or volunteer settings where collaboration, reliability, or conflict resolution came up.',
       },
     ],
     faqs: [],
