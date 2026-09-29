@@ -1,27 +1,26 @@
 import { Link } from 'react-router-dom';
-import { useEffect, useState } from 'react';
-import { onAuthStateChanged } from 'firebase/auth';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import { Check } from 'lucide-react';
-import { auth } from '../../firebase';
-import { useProfession } from '../professions/ProfessionContext.jsx';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { FaqSection } from '../components/MarketingSections';
 import { startCheckout } from '../lib/checkout';
+import { useAccount } from '../lib/account';
+import { PREMIUM_PRICE, FREE_TRIAL_SESSIONS } from '../lib/pricing';
+import { livePrograms } from '../professions/index.js';
 import usePageTitle from '../lib/usePageTitle';
 
 export default function Pricing() {
   usePageTitle('Pricing');
-  const [user, setUser] = useState(null);
+  const { user } = useAccount();
   const [redirecting, setRedirecting] = useState(false);
-  useEffect(() => { const unsub = onAuthStateChanged(auth, setUser); return () => unsub(); }, []);
-  const ctx = useProfession?.();
-  const slug = ctx?.slug || 'dental';
+  const liveNames = livePrograms().map((p) => p.name.toLowerCase()).join(' and ');
 
   const handleUpgrade = async () => {
     setRedirecting(true);
     try {
-      await startCheckout(slug);
+      await startCheckout();
     } catch (err) {
       console.error('Checkout redirect failed:', err);
       toast.error("We couldn't open checkout. Please try again.");
@@ -36,17 +35,17 @@ export default function Pricing() {
       priceNote: '7 days',
       desc: 'Try the full experience before you commit.',
       features: [
-        '2 full practice sessions',
+        `${FREE_TRIAL_SESSIONS} full practice sessions`,
         'Video or audio recording',
         'Scoring and written feedback on every answer',
         'Custom interviews from the question bank',
       ],
       cta: user ? 'Start practicing' : 'Create free account',
-      href: user ? `/${slug}/dashboard` : '/signup',
+      href: user ? '/dashboard' : '/signup',
     },
     {
       name: 'Premium',
-      price: '$29',
+      price: PREMIUM_PRICE,
       priceNote: 'one-time',
       desc: '12 months of access, enough for a full application cycle.',
       features: [
@@ -77,7 +76,8 @@ export default function Pricing() {
   ];
 
   const faqs = [
-    { q: 'Is Premium a subscription?', a: 'No. It’s a one-time $29 payment for 12 months of access. It doesn’t renew automatically.' },
+    { q: 'Is Premium a subscription?', a: `No. It’s a one-time ${PREMIUM_PRICE} payment for 12 months of access. It doesn’t renew automatically.` },
+    { q: 'Does Premium cover every program?', a: `Yes. One account covers ${liveNames} school practice, and you can switch your program from your dashboard at any time.` },
     { q: 'What happens after my free trial?', a: 'Your account stays. To keep practicing and see your saved sessions, upgrade to Premium.' },
     { q: 'Do you offer refunds?', a: 'If the product isn’t a fit, email us within 7 days of purchase and we’ll make it right.' },
     { q: 'Is my data private?', a: 'Your recordings aren’t stored. Audio is sent to our transcription provider only to create your transcript, and transcripts and feedback are saved only if you click “Save Session.” See our Privacy Policy for details.' },
@@ -128,19 +128,7 @@ export default function Pricing() {
         </div>
       </section>
 
-      <section className="border-t bg-white">
-        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-          <h2 className="text-xl font-semibold text-gray-900">FAQs</h2>
-          <dl className="mt-6 grid gap-6 md:grid-cols-2">
-            {faqs.map(item => (
-              <div key={item.q} className="rounded-2xl border p-6">
-                <dt className="text-sm font-semibold text-gray-900">{item.q}</dt>
-                <dd className="mt-2 text-sm text-gray-600">{item.a}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-      </section>
+      <FaqSection items={faqs} />
     </div>
   );
 }

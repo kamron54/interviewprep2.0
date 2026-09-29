@@ -1,16 +1,13 @@
 import { Link } from 'react-router-dom';
-import { useProfession } from '../professions/ProfessionContext.jsx';
 import usePageTitle from '../lib/usePageTitle';
 
 export default function Resources() {
   usePageTitle('Resources');
-  const { slug } = useProfession() || {};
-  const base = slug ? `/${slug}` : '/dental';
 
   const guides = [
-    { title: 'Ethical Frameworks Cheat Sheet',        to: `${base}/resources/ethics` },
-    { title: 'STAR / SPIKES Communication',           to: `${base}/resources/communication` },
-    { title: 'Common Pitfalls & How to Avoid Them',   to: `${base}/resources/pitfalls` },
+    { title: 'Ethical Frameworks Cheat Sheet',        to: '/resources/ethics' },
+    { title: 'STAR / SPIKES Communication',           to: '/resources/communication' },
+    { title: 'Common Pitfalls & How to Avoid Them',   to: '/resources/pitfalls' },
   ];
 
   const downloads = [

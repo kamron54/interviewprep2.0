@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { auth, db } from '../../firebase';
 import { doc, runTransaction, arrayUnion, collection, addDoc } from 'firebase/firestore';
 
@@ -103,8 +103,6 @@ function normalizeFeedback(raw) {
 
 export default function SessionSummary() {
   usePageTitle('Session Summary');
-  const { profession: slug } = useParams();
-  const base = slug ? `/${slug}` : '/dental';
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -218,8 +216,8 @@ useEffect(() => {
 
   // Opened directly or refreshed: recordings only live in memory, so there's nothing to show
   useEffect(() => {
-    if (!isReadonly && recordings.length === 0) navigate(`${base}/dashboard`, { replace: true });
-  }, [isReadonly, recordings.length, base, navigate]);
+    if (!isReadonly && recordings.length === 0) navigate('/dashboard', { replace: true });
+  }, [isReadonly, recordings.length, navigate]);
 
   // Process responses sequentially (keeps your current behavior)
   // Normal (live) processing path — skip entirely in read-only mode
@@ -253,7 +251,7 @@ useEffect(() => {
                 "We’ve noticed unusually heavy usage on your account. To ensure fair access for all users, we’ve temporarily paused usage. If you believe this is a mistake, please contact support.",
               { duration: 10000 }
             );
-            navigate(`${base}/dashboard`);
+            navigate('/dashboard');
             return;
           }
 
@@ -280,7 +278,7 @@ useEffect(() => {
     return () => {
       cancelled = true;
     };
-  }, [recordings, profession, base, navigate, isReadonly]);
+  }, [recordings, profession, navigate, isReadonly]);
 
   // Read-only hydration: convert saved items to the shape used by the UI
   useEffect(() => {
@@ -362,7 +360,7 @@ useEffect(() => {
      await addDoc(colRef, payload);
      setSaveOpen(false);
      toast?.success?.("Session saved to your dashboard.");
-     navigate(`${base}/dashboard`);
+     navigate('/dashboard');
    } catch (e) {
      console.error(e);
      toast?.error?.("Failed to save session. Please try again.");
@@ -379,7 +377,7 @@ useEffect(() => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => navigate(`${base}/dashboard`)}
+              onClick={() => navigate('/dashboard')}
               className="text-muted-foreground hover:text-foreground"
             >
               <ChevronLeft className="h-4 w-4 mr-2" /> Back to Dashboard
@@ -422,7 +420,7 @@ useEffect(() => {
                 </AlertDialogContent>
               </AlertDialog>
             )}
-            <Button onClick={() => navigate(`${base}/setup`)}>Start New Session</Button>
+            <Button onClick={() => navigate('/setup')}>Start New Session</Button>
           </div>
         </div>
       </header>

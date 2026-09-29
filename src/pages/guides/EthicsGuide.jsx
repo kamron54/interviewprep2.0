@@ -1,11 +1,10 @@
 import { Link } from 'react-router-dom';
-import { useProfession } from '../../professions/ProfessionContext.jsx';
+import { useAccount } from '../../lib/account';
 import GuideShell from '../../components/GuideShell';
 
 export default function EthicsGuide() {
-  const { slug } = useProfession() || {};
+  const { track: slug } = useAccount();
   const display = { dental: 'Dental', medical: 'Medical' }[slug] || 'Healthcare';
-  const base = slug ? `/${slug}` : '/dental';
 
   return (
     <GuideShell
@@ -79,7 +78,7 @@ export default function EthicsGuide() {
       </p>
 
       <div className="mt-8">
-        <Link to={`${base}/setup`} className="inline-block rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800">
+        <Link to="/setup" className="inline-block rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800">
           Practice an ethics scenario
         </Link>
       </div>

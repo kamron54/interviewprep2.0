@@ -14,10 +14,6 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Not signed in' });
     }
 
-    // Send the user back to the dashboard for the program they were on
-    const { profession } = req.body || {};
-    const slug = /^[a-z]+$/.test(profession || '') ? profession : 'dental';
-
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       payment_method_types: ['card'],
@@ -27,8 +23,8 @@ export default async function handler(req, res) {
           quantity: 1,
         },
       ],
-      success_url: `${req.headers.origin}/${slug}/dashboard?upgraded=1`,
-      cancel_url: `${req.headers.origin}/${slug}/dashboard`,
+      success_url: `${req.headers.origin}/dashboard?upgraded=1`,
+      cancel_url: `${req.headers.origin}/dashboard`,
       metadata: {
         firebaseUid: user.uid,
       },

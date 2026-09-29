@@ -1,10 +1,10 @@
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { useEffect, useState } from 'react';
-import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '../firebase';
+import { Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Toaster } from 'sonner';
 
 import Layout from './pages/Layout';
-import HomePage from './pages/HomePage';
+import ProgramHub from './pages/ProgramHub';
+import ProgramLanding from './pages/ProgramLanding';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
 import Dashboard from './pages/Dashboard';
@@ -19,14 +19,15 @@ import EthicsGuide from './pages/guides/EthicsGuide';
 import CommunicationGuide from './pages/guides/CommunicationGuide';
 import PitfallsGuide from './pages/guides/PitfallsGuide';
 import About from './pages/About';
-import { ProfessionProvider } from './professions/ProfessionContext';
 import PrivacyPolicy from './pages/privacy';
 import TermsOfService from './pages/terms';
-import { Toaster } from 'sonner';
 import PageLoader from './components/PageLoader';
+import { AccountProvider, useAccount } from './lib/account';
+import { rememberProgram } from './lib/auth';
 
 
-function Protected({ user, children }) {
+function Protected({ children }) {
+  const { user } = useAccount();
   const location = useLocation();
   if (!user) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
@@ -34,41 +35,29 @@ function Protected({ user, children }) {
   return children;
 }
 
-function App() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+// Before programs had their own pages, every URL started with one (/dental/pricing,
+// /dental/dashboard?upgraded=1). Send those to the shared page, keeping the query string.
+function LegacyProgramRedirect() {
+  const { program, '*': rest = '' } = useParams();
+  const { search, hash } = useLocation();
+  useEffect(() => { rememberProgram(program); }, [program]);
+  return <Navigate to={`/${rest}${search}${hash}`} replace />;
+}
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  if (loading) return <PageLoader />;
+function AppRoutes() {
+  const { authReady } = useAccount();
+  if (!authReady) return <PageLoader />;
 
   return (
     <>
     <Routes>
-      {/* Redirect / to a default profession */}
-      <Route path="/" element={<Navigate to="/dental" replace />} />
-
       {/* Global auth */}
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<SignUp />} />
 
-      {/* Profession-scoped */}
-      <Route
-        path="/:profession/*"
-        element={
-          <ProfessionProvider>
-            <Layout />
-          </ProfessionProvider>
-        }
-      >
+      <Route element={<Layout />}>
         {/* Public */}
-        <Route index element={<HomePage />} />
+        <Route index element={<ProgramHub />} />
         <Route path="pricing" element={<Pricing />} />
         <Route path="resources" element={<Resources />} />
         <Route path="about" element={<About />} />
@@ -79,21 +68,30 @@ function App() {
         <Route path="terms" element={<TermsOfService />} />
 
         {/* Protected */}
-        <Route path="dashboard" element={<Protected user={user}><Dashboard /></Protected>} />
-        <Route path="setup"     element={<Protected user={user}><InterviewSetup /></Protected>} />
-        <Route path="session"   element={<Protected user={user}><InterviewSession /></Protected>} />
-        <Route path="summary"   element={<Protected user={user}><SessionSummary /></Protected>} />
+        <Route path="dashboard" element={<Protected><Dashboard /></Protected>} />
+        <Route path="setup"     element={<Protected><InterviewSetup /></Protected>} />
+        <Route path="session"   element={<Protected><InterviewSession /></Protected>} />
+        <Route path="summary"   element={<Protected><SessionSummary /></Protected>} />
 
         {/* Admin */}
-        <Route path="admin"           element={<Protected user={user}><AdminDashboard /></Protected>} />
-        <Route path="admin/questions" element={<Protected user={user}><AdminQuestionManager /></Protected>} />
-      </Route>
+        <Route path="admin"           element={<Protected><AdminDashboard /></Protected>} />
+        <Route path="admin/questions" element={<Protected><AdminQuestionManager /></Protected>} />
 
-      {/* Fallback */}
-      <Route path="*" element={<Navigate to="/dental" replace />} />
+        {/* Program pages (/dental, /medical, …); unknown slugs go home */}
+        <Route path=":program" element={<ProgramLanding />} />
+        <Route path=":program/*" element={<LegacyProgramRedirect />} />
+      </Route>
     </Routes>
     <Toaster position="top-right" richColors />
    </>
+  );
+}
+
+function App() {
+  return (
+    <AccountProvider>
+      <AppRoutes />
+    </AccountProvider>
   );
 }
 

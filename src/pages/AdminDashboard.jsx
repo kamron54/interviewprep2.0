@@ -1,19 +1,20 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { auth, db } from '../../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { collection, doc, getDoc, getDocs, updateDoc } from 'firebase/firestore';
-import { buttonVariants } from '@/components/ui/button';
+import { toast } from 'sonner';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Check, X } from 'lucide-react';
+import { comingSoonPrograms, getProgram } from '../professions/index.js';
 
 function AdminDashboard() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [waitlist, setWaitlist] = useState(null); // null until loaded
   const navigate = useNavigate();
-  const { profession } = useParams();
-  const base = profession ? `/${profession}` : '/dental';
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -38,6 +39,7 @@ function AdminDashboard() {
         if (data.role === 'admin') {
           setIsAdmin(true);
           fetchUsers();
+          fetchWaitlist(user);
         } else {
           navigate('/');
         }
@@ -62,6 +64,29 @@ function AdminDashboard() {
     }
   };
 
+  // Waitlist entries come from api/waitlist.js (admin-only GET), so no Firestore rules are needed
+  const fetchWaitlist = async (user) => {
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('/api/waitlist', { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error(await res.text());
+      setWaitlist((await res.json()).entries);
+    } catch (err) {
+      console.error('Error fetching waitlist:', err);
+      setWaitlist([]);
+    }
+  };
+
+  const copyEmails = async (program) => {
+    const emails = waitlist.filter(e => e.program === program.slug).map(e => e.email);
+    try {
+      await navigator.clipboard.writeText(emails.join(', '));
+      toast.success(`Copied ${emails.length} ${program.name} email${emails.length === 1 ? '' : 's'}`);
+    } catch {
+      toast.error('Could not copy to the clipboard.');
+    }
+  };
+
   if (!isAdmin) return null;
 
   // Usage totals (admins excluded) — the source for the homepage STATS row
@@ -83,7 +108,7 @@ function AdminDashboard() {
     <div className="max-w-5xl mx-auto p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-        <Link to={`${base}/admin/questions`} className={buttonVariants()}>Manage Questions</Link>
+        <Link to="/admin/questions" className={buttonVariants()}>Manage Questions</Link>
       </div>
 
       {!loading && (
@@ -97,6 +122,29 @@ function AdminDashboard() {
         </section>
       )}
 
+      {/* Waitlist signups: which program students want next */}
+      <Card className="p-6">
+        <h2 className="text-base font-semibold">Waitlist</h2>
+        {waitlist === null ? (
+          <p className="mt-2 text-sm text-muted-foreground">Loading waitlist…</p>
+        ) : (
+          <ul className="mt-3 divide-y text-sm">
+            {comingSoonPrograms().map((p) => {
+              const count = waitlist.filter(e => e.program === p.slug).length;
+              return (
+                <li key={p.slug} className="flex items-center justify-between gap-4 py-2">
+                  <span>{p.displayName}</span>
+                  <span className="flex items-center gap-3">
+                    <span className="font-semibold">{count.toLocaleString()}</span>
+                    <Button variant="outline" size="sm" disabled={count === 0} onClick={() => copyEmails(p)}>Copy emails</Button>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Card>
+
       <Card className="p-6">
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading users…</p>
@@ -107,6 +155,7 @@ function AdminDashboard() {
                 <tr className="bg-gray-100">
                   <th className="border px-2 py-1 text-left">Name</th>
                   <th className="border px-2 py-1 text-left">Email</th>
+                  <th className="border px-2 py-1">Program</th>
                   <th className="border px-2 py-1">Verified</th>
                   <th className="border px-2 py-1">Trial Ends</th>
                   <th className="border px-2 py-1">Paid</th>
@@ -120,6 +169,7 @@ function AdminDashboard() {
                   <tr key={u.id}>
                     <td className="border px-2 py-1">{u.name || '—'}</td>
                     <td className="border px-2 py-1">{u.email}</td>
+                    <td className="border px-2 py-1 text-center">{getProgram(u.track)?.name || '—'}</td>
                     <td className="border px-2 py-1 text-center"><YesNo value={u.emailVerified} /></td>
                     <td className="border px-2 py-1 text-center">
                       {u.trialExpiresAt ? new Date(u.trialExpiresAt).toLocaleString() : '—'}
