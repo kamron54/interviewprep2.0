@@ -1,7 +1,7 @@
 import { auth } from '../../firebase';
 
-// Redirects the signed-in user to Stripe Checkout. Stripe sends them back to /:profession/dashboard.
-export async function startCheckout(profession) {
+// Redirects the signed-in user to Stripe Checkout. Stripe sends them back to /dashboard.
+export async function startCheckout() {
   const user = auth.currentUser;
   if (!user) throw new Error('User not authenticated');
 
@@ -12,7 +12,6 @@ export async function startCheckout(profession) {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ profession }),
   });
 
   if (!res.ok) {

@@ -46,7 +46,7 @@ export default function InterviewSession() {
 
   // Opened directly or refreshed: there's no setup config, so start over from setup
   useEffect(() => {
-    if (!location.state?.config) navigate('../setup', { replace: true });
+    if (!location.state?.config) navigate('/setup', { replace: true });
   }, [location.state, navigate]);
 
   // elapsed timer
@@ -272,7 +272,7 @@ export default function InterviewSession() {
       videoUrl: r.videoUrl || null,
       audioUrl: r.audioUrl || null,
     }));
-    navigate('../summary', { state: { recordings: serializable, profession: config.profession, totalSessionTime: sessionElapsed, sessionId,} });
+    navigate('/summary', { state: { recordings: serializable, profession: config.profession, totalSessionTime: sessionElapsed, sessionId,} });
   };
 
   const handleSkip = () => {
@@ -326,7 +326,7 @@ export default function InterviewSession() {
       <header className="border-b border-border bg-card">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="lg" onClick={() => navigate('../dashboard')} className="text-muted-foreground hover:text-foreground">
+            <Button variant="ghost" size="lg" onClick={() => navigate('/dashboard')} className="text-muted-foreground hover:text-foreground">
               <ChevronLeft className="h-4 w-4 mr-2" /> Back to Dashboard
             </Button>
             <Badge variant="outline">Question {questionIndex + 1} of {questions.length}</Badge>

@@ -1,10 +1,21 @@
-// The profession the user last browsed (set by ProfessionProvider), used for routes outside /:profession
-export function lastProfessionSlug() {
+import { getProgram, DEFAULT_PROGRAM } from '../professions/index.js';
+
+const LAST_PROGRAM_KEY = 'lastProfession';
+
+// The live program this browser last looked at, used to pre-fill signup for signed-out visitors
+export function rememberedProgram() {
   try {
-    return localStorage.getItem('lastProfession') || 'dental';
+    const slug = localStorage.getItem(LAST_PROGRAM_KEY);
+    return getProgram(slug)?.status === 'live' ? slug : DEFAULT_PROGRAM;
   } catch {
-    return 'dental';
+    return DEFAULT_PROGRAM;
   }
+}
+
+export function rememberProgram(slug) {
+  try {
+    if (getProgram(slug)?.status === 'live') localStorage.setItem(LAST_PROGRAM_KEY, slug);
+  } catch { /* storage unavailable (private mode) — nothing to remember */ }
 }
 
 const AUTH_ERROR_MESSAGES = {

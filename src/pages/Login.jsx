@@ -5,8 +5,9 @@ import { auth, db } from '../../firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import AuthLayout, { AuthMessage } from '../components/AuthLayout';
-import { friendlyAuthError, lastProfessionSlug } from '../lib/auth';
+import AuthLayout from '../components/AuthLayout';
+import FormMessage from '../components/FormMessage';
+import { friendlyAuthError } from '../lib/auth';
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -31,14 +32,13 @@ function Login() {
       const docRef = doc(db, 'users', user.uid);
       const docSnap = await getDoc(docRef);
       const data = docSnap.exists() ? docSnap.data() : {};
-      const slug = lastProfessionSlug();
 
       if (data.role === 'admin') {
-        navigate(`/${slug}/admin`, { replace: true });
+        navigate('/admin', { replace: true });
       } else if (from) {
-        navigate(from, { replace: true }); // go back to /dental/... or wherever they were headed
+        navigate(from, { replace: true }); // go back to wherever they were headed
       } else {
-        navigate(`/${slug}/dashboard`, { replace: true });
+        navigate('/dashboard', { replace: true });
       }
     } catch (err) {
       console.error('❌ Login error:', err);
@@ -103,8 +103,8 @@ function Login() {
           />
         </div>
 
-        {error && <AuthMessage>{error}</AuthMessage>}
-        {notice && <AuthMessage tone="success">{notice}</AuthMessage>}
+        {error && <FormMessage>{error}</FormMessage>}
+        {notice && <FormMessage tone="success">{notice}</FormMessage>}
 
         <Button type="submit" size="lg" className="w-full" disabled={submitting}>
           {submitting ? 'Logging in…' : 'Log in'}

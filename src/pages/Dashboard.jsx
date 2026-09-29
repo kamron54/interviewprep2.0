@@ -1,14 +1,24 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { onAuthStateChanged, sendEmailVerification } from 'firebase/auth';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { sendEmailVerification } from 'firebase/auth';
 import { auth, db } from '../../firebase';
-import { doc, onSnapshot, updateDoc, collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
+import { doc, updateDoc, collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { cn } from '@/lib/utils';
 import PageLoader from '../components/PageLoader';
+import ProgramIcon from '../components/ProgramIcon';
 import { startCheckout } from '../lib/checkout';
+import { useAccount } from '../lib/account';
+import { rememberProgram } from '../lib/auth';
+import { FREE_TRIAL_SESSIONS } from '../lib/pricing';
+import { getProgram, livePrograms } from '../professions/index.js';
 import usePageTitle from '../lib/usePageTitle';
 import { Trophy, BookOpen, Target, Play, Star, AlertTriangle, Crown, Gift, BarChart3, MailCheck } from "lucide-react";
 
@@ -42,12 +52,13 @@ function daysLeft(end) {
 
 export default function Dashboard() {
   usePageTitle('Dashboard');
-  const [userData, setUserData] = useState(null);
+  // profile is a live subscription (AccountProvider), so a Stripe payment shows up as soon as the webhook writes it
+  const { user, profile: userData, track, program } = useAccount();
   const [recentSessions, setRecentSessions] = useState([]);
-  const [isVerified, setIsVerified] = useState(false);
+  const [isVerified, setIsVerified] = useState(() => !!auth.currentUser?.emailVerified);
   const [checkingVerification, setCheckingVerification] = useState(false);
-  const { profession } = useParams();
-  const base = profession ? `/${profession}` : '/dental';
+  const [programDialogOpen, setProgramDialogOpen] = useState(false);
+  const [pendingTrack, setPendingTrack] = useState(track);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -61,44 +72,30 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
+    if (!user) return;
     let cancelled = false;
-    let unsubUserDoc = null;
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        navigate('/login');
-        return;
-      }
+    (async () => {
       try {
+        // Pick up a verification that happened in another tab since the token was issued
         await user.reload();
         if (cancelled) return;
         if (user.emailVerified) await markVerified(user);
-
-        // Live subscription so a Stripe payment shows up as soon as the webhook writes it
-        unsubUserDoc?.();
-        unsubUserDoc = onSnapshot(doc(db, 'users', user.uid), (snap) => {
-          if (snap.exists()) setUserData(snap.data());
-          else console.warn('User data not found.');
-        });
 
         // Fetch recent saved sessions (lightweight)
         try {
           const sessRef = collection(doc(db, 'users', user.uid), 'sessions');
           const q = query(sessRef, orderBy('createdAt', 'desc'), limit(5));
           const s = await getDocs(q);
-          setRecentSessions(s.docs.map(d => ({ id: d.id, ...d.data() })));
+          if (!cancelled) setRecentSessions(s.docs.map(d => ({ id: d.id, ...d.data() })));
         } catch (e) {
           console.warn('Could not load sessions:', e);
         }
       } catch (e) {
         console.error('Dashboard init error:', e);
       }
-    });
-    return () => {
-      cancelled = true;
-      unsubscribe();
-      unsubUserDoc?.();
-    };
-  }, [navigate]);
+    })();
+    return () => { cancelled = true; };
+  }, [user]);
 
   // Returning from Stripe Checkout
   useEffect(() => {
@@ -109,9 +106,26 @@ export default function Dashboard() {
     }
   }, [searchParams, setSearchParams]);
 
+  const openProgramDialog = () => {
+    setPendingTrack(track);
+    setProgramDialogOpen(true);
+  };
+
+  const handleSaveProgram = async () => {
+    if (pendingTrack === track) return;
+    try {
+      await updateDoc(doc(db, 'users', user.uid), { track: pendingTrack });
+      rememberProgram(pendingTrack);
+      toast.success(`You’re now practicing for ${getProgram(pendingTrack).displayName}.`);
+    } catch (err) {
+      console.error('Could not change program:', err);
+      toast.error("We couldn't change your program. Please try again.");
+    }
+  };
+
   const handleUpgrade = async () => {
     try {
-      await startCheckout(profession);
+      await startCheckout();
     } catch (err) {
       console.error('Checkout redirect failed:', err);
       toast.error("We couldn't open checkout. Please try again.");
@@ -186,9 +200,8 @@ export default function Dashboard() {
     { label: 'Average Score',       value: averageScore == null ? '—' : `${averageScore}%`, Icon: Target, color: 'text-blue-600' },
   ];
 
-  // Free Trial 2 session limit
-  const FREE_TRIAL_SESSION_LIMIT = 2;
-  const trialSessionsLeft = Math.max(0, FREE_TRIAL_SESSION_LIMIT - sessionsCompleted);
+  // Free trial session limit
+  const trialSessionsLeft = Math.max(0, FREE_TRIAL_SESSIONS - sessionsCompleted);
   const locked = !(userState === 'paid_active' || userState === 'free_trial_active' && trialSessionsLeft > 0);
 
   if (!isVerified) {
@@ -251,6 +264,14 @@ export default function Dashboard() {
                   ? 'Your subscription has ended. Reactivate to continue your progress.'
                   : 'Continue your interview preparation journey.'}
               </p>
+              <p className="mt-2 inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+                <ProgramIcon slug={track} className="h-4 w-4 text-teal-600" />
+                Practicing for <span className="font-medium text-foreground">{program.displayName}</span>
+                <span aria-hidden="true">·</span>
+                <button type="button" onClick={openProgramDialog} className="font-medium text-foreground underline-offset-4 hover:underline">
+                  Change
+                </button>
+              </p>
             </div>
 
             <div className="flex items-center space-x-4">
@@ -261,7 +282,7 @@ export default function Dashboard() {
               </span>
 
               {/* Start button — sends locked users to checkout instead of dead-ending */}
-              <Button onClick={() => (locked ? handleUpgrade() : navigate(`${base}/setup`))}>
+              <Button onClick={() => (locked ? handleUpgrade() : navigate('/setup'))}>
                 {locked ? <Crown className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                 {locked ? 'Upgrade to Practice' : 'Start Practice'}
               </Button>
@@ -338,7 +359,7 @@ export default function Dashboard() {
                           <Badge variant={(s.overallAvg ?? 0) >= 80 ? 'default' : 'secondary'}>{Math.round(s.overallAvg ?? 0)}%</Badge>
                           <Button
                             variant="outline"
-                            onClick={() => navigate(`${base}/summary`, { state: { readonly: true, savedSession: s } })}
+                            onClick={() => navigate('/summary', { state: { readonly: true, savedSession: s } })}
                           >
                             Review
                           </Button>
@@ -437,6 +458,44 @@ export default function Dashboard() {
           </div>
         )}
       </section>
+
+      {/* Change program */}
+      <AlertDialog open={programDialogOpen} onOpenChange={setProgramDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Which interview are you preparing for?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This sets the question bank for your practice sessions. Your saved sessions and scores stay the same.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2" role="radiogroup" aria-label="Program">
+            {livePrograms().map((p) => (
+              <label
+                key={p.slug}
+                className={cn(
+                  'flex cursor-pointer items-center gap-3 rounded-lg border p-3 hover:bg-muted/50',
+                  pendingTrack === p.slug && 'border-foreground'
+                )}
+              >
+                <input
+                  type="radio"
+                  name="track"
+                  value={p.slug}
+                  checked={pendingTrack === p.slug}
+                  onChange={() => setPendingTrack(p.slug)}
+                  className="accent-foreground"
+                />
+                <ProgramIcon slug={p.slug} className="h-4 w-4 text-teal-600" />
+                <span className="text-sm font-medium">{p.displayName}</span>
+              </label>
+            ))}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSaveProgram}>Save</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

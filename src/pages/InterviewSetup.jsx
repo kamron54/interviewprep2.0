@@ -1,5 +1,5 @@
 import { useState, useEffect, } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { getDocs, collection } from 'firebase/firestore';
 import { db } from '../../firebase';
 
@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft } from "lucide-react";
 import usePageTitle from '../lib/usePageTitle';
+import { useAccount } from '../lib/account';
 
 function ChevronDown(props) {
   return (
@@ -29,27 +30,13 @@ function InterviewSetup() {
   const [customQuestions, setCustomQuestions] = useState([]);
   const [customInput, setCustomInput] = useState('');
   const [questionBank, setQuestionBank] = useState([]);
-  const { profession: professionSlug } = useParams();
-  const base = professionSlug ? `/${professionSlug}` : "/dental";
-
-  const tagForProfession = (slug) => {
-    if (!slug) return null;
-    const map = {
-      dental: 'Dental',
-      medical: 'Medical',
-      pt: 'Physical Therapy',
-      pa: 'Physician Assistant',
-      pharmacy: 'Pharmacy',
-      ot: 'Occupational Therapy',
-      veterinary: 'Veterinary Medicine',
-    };
-    return map[slug.toLowerCase()] ?? null;
-  };
-  const professionTag = tagForProfession(professionSlug);
+  // The student's program (saved on their account) decides which tagged questions they get
+  const { program, profileLoaded } = useAccount();
+  const professionTag = program.tag;
 
   const handleStart = () => {
     const config = {
-      profession: professionTag || 'Dental', // fallback if not in a slugged route
+      profession: professionTag,
       mode,
       big3,
       questionCount: Math.min(10, Math.max(1, Math.round(questionCount) || 1)),
@@ -63,8 +50,7 @@ function InterviewSetup() {
       config.isCustom = true;
     }
 
-    const target = `/${professionSlug || 'dental'}/session`;
-    navigate(target, { state: { config } });
+    navigate('/session', { state: { config } });
   };
 
   useEffect(() => {
@@ -76,10 +62,7 @@ function InterviewSetup() {
     fetchQuestions();
   }, []);
 
-  const visibleBank =
-    interviewType === 'custom' && professionTag
-      ? questionBank.filter(q => q.mainTags?.includes(professionTag))
-      : questionBank;
+  const visibleBank = questionBank.filter(q => q.mainTags?.includes(professionTag));
 
   return (
     <div className="min-h-screen bg-background">
@@ -90,7 +73,7 @@ function InterviewSetup() {
             <Button
               variant="ghost"
               size="lg"
-              onClick={() => navigate(`${base}/dashboard`)}
+              onClick={() => navigate('/dashboard')}
               className="text-muted-foreground hover:text-foreground"
             >
               <ChevronLeft className="h-4 w-4 mr-2" /> Back to Dashboard
@@ -101,6 +84,10 @@ function InterviewSetup() {
       <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
         <div className="space-y-1">
           <h1 className="text-3xl font-bold text-foreground">Interview Setup</h1>
+          <p className="text-sm text-muted-foreground">
+            Questions for {program.displayName} ·{' '}
+            <Link to="/dashboard" className="font-medium text-foreground underline-offset-4 hover:underline">Change program</Link>
+          </p>
         </div>
 
         {/* Interview Type on its own */}
@@ -281,7 +268,7 @@ function InterviewSetup() {
             variant="default"
             size="lg"
             onClick={handleStart}
-            disabled={interviewType === 'custom' && customQuestions.length === 0}
+            disabled={!profileLoaded || (interviewType === 'custom' && customQuestions.length === 0)}
             className="w-full"
           >
             Start Interview
