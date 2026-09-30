@@ -61,6 +61,20 @@ function isMeaningfulTranscript(text) {
   return rest.split(/\s+/).filter(Boolean).length >= 3;
 }
 
+// Runs fn over items with at most `limit` in flight, keeping results in order
+async function mapWithConcurrency(items, limit, fn) {
+  const results = new Array(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i], i);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
 // --- scoring helpers -------------------------------------------------------
 const clamp01 = (n) => Math.max(0, Math.min(100, Number.isFinite(+n) ? +n : 0));
 
@@ -123,13 +137,10 @@ export default function SessionSummary() {
   const [saveOpen, setSaveOpen] = useState(false);
   const [saveTitle, setSaveTitle] = useState('');
   const [results, setResults] = useState([]);
-  const [loadingIndex, setLoadingIndex] = useState(null);
-
-  const progressPercent = useMemo(() => {
-    if (!recordings.length) return 0;
-    const idx = loadingIndex ?? 0;
-    return Math.round((idx / recordings.length) * 100);
-  }, [loadingIndex, recordings.length]);
+  // Recorded answers that have finished transcription + feedback (they're analyzed in parallel)
+  const [doneCount, setDoneCount] = useState(0);
+  const answersToAnalyze = useMemo(() => recordings.filter((r) => !r.skipped && r.audioUrl).length, [recordings]);
+  const progressPercent = answersToAnalyze ? Math.round((doneCount / answersToAnalyze) * 100) : 0;
 
   const answeredCount = useMemo(() => results.filter((r) => !r?.skipped && (r?.audioUrl || r?.videoUrl)).length, [results]);
   const skippedCount = useMemo(() => results.filter((r) => r?.skipped).length, [results]);
@@ -219,59 +230,58 @@ useEffect(() => {
     if (!isReadonly && recordings.length === 0) navigate('/dashboard', { replace: true });
   }, [isReadonly, recordings.length, navigate]);
 
-  // Process responses sequentially (keeps your current behavior)
+  // Analyze all answers at once (up to 5 in flight) instead of one after another
   // Normal (live) processing path — skip entirely in read-only mode
   useEffect(() => {
     if (isReadonly) return;
     let cancelled = false;
 
-    const processResponses = async () => {
-      const all = [];
-
-      for (let i = 0; i < recordings.length; i++) {
-        if (cancelled) return;
-        const item = recordings[i];
-
-        if (item.skipped || !item.audioUrl) {
-          all.push({ ...item, originalIndex: i, transcript: null, feedback: null });
-          continue;
-        }
-
-        setLoadingIndex(i);
-
-        try {
-          // fetch blob from in-memory object URL
-          const res = await fetch(item.audioUrl);
-          const audioBlob = await res.blob();
-          const transcriptResult = await transcribeAudio(audioBlob);
-
-          if (transcriptResult.limitReached) {
-            toast.error(
-              transcriptResult.error ||
-                "We’ve noticed unusually heavy usage on your account. To ensure fair access for all users, we’ve temporarily paused usage. If you believe this is a mistake, please contact support.",
-              { duration: 10000 }
-            );
-            navigate('/dashboard');
-            return;
-          }
-
-          const transcript = transcriptResult.transcript || '';
-
-          if (isMeaningfulTranscript(transcript)) {
-            const feedback = await getFeedback(item.question, transcript, profession);
-            all.push({ ...item, originalIndex: i, transcript, feedback });
-          } else {
-            all.push({ ...item, originalIndex: i, transcript: '', feedback: null, noSpeech: true });
-          }
-        } catch (err) {
-          console.error(`Error processing response ${i + 1}`, err);
-          all.push({ ...item, originalIndex: i, transcript: '', feedback: null, error: true });
-        }
+    const analyzeAnswer = async (item, i) => {
+      if (item.skipped || !item.audioUrl) {
+        return { ...item, originalIndex: i, transcript: null, feedback: null };
       }
 
+      try {
+        // fetch blob from in-memory object URL
+        const res = await fetch(item.audioUrl);
+        const audioBlob = await res.blob();
+        const transcriptResult = await transcribeAudio(audioBlob);
+
+        if (transcriptResult.limitReached) {
+          return { limitReached: true, limitError: transcriptResult.error };
+        }
+
+        const transcript = transcriptResult.transcript || '';
+
+        if (isMeaningfulTranscript(transcript)) {
+          const feedback = await getFeedback(item.question, transcript, profession);
+          return { ...item, originalIndex: i, transcript, feedback };
+        }
+        return { ...item, originalIndex: i, transcript: '', feedback: null, noSpeech: true };
+      } catch (err) {
+        console.error(`Error processing response ${i + 1}`, err);
+        return { ...item, originalIndex: i, transcript: '', feedback: null, error: true };
+      } finally {
+        if (!cancelled) setDoneCount((n) => n + 1);
+      }
+    };
+
+    const processResponses = async () => {
+      const all = await mapWithConcurrency(recordings, 5, analyzeAnswer);
       if (cancelled) return;
+
+      const limited = all.find((r) => r.limitReached);
+      if (limited) {
+        toast.error(
+          limited.limitError ||
+            "We’ve noticed unusually heavy usage on your account. To ensure fair access for all users, we’ve temporarily paused usage. If you believe this is a mistake, please contact support.",
+          { duration: 10000 }
+        );
+        navigate('/dashboard');
+        return;
+      }
+
       setResults(all);
-      setLoadingIndex(null);
     };
 
     processResponses();
@@ -506,9 +516,9 @@ useEffect(() => {
                 {!isReadonly && <span className="text-sm text-muted-foreground">{progressPercent}%</span>}
               </div>
               {!isReadonly && <Progress value={progressPercent} className="h-2" />}
-              {loadingIndex !== null && (
+              {!isReadonly && answersToAnalyze > 0 && (
                 <p className="text-sm text-muted-foreground mt-2 text-center">
-                  Processing response {loadingIndex + 1} of {recordings.length}
+                  Analyzed {doneCount} of {answersToAnalyze} answer{answersToAnalyze === 1 ? '' : 's'}
                 </p>
               )}
             </CardContent>
