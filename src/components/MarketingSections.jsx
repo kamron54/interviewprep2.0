@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ListChecks, Video, Sparkles, SlidersHorizontal, TrendingUp, Lock, ArrowRight } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
-import { PREMIUM_PRICE, FREE_TRIAL_SESSIONS } from '../lib/pricing';
+import { PLANS, FREE_TRIAL_SESSIONS, formatPrice } from '../lib/pricing';
 
 // Sections shared by the homepage (ProgramHub) and every program page (ProgramLanding)
 
@@ -13,7 +13,7 @@ export const SITE_STATS = [];
 export const COMMON_FAQS = [
   { q: 'Do I need a camera?', a: 'No. You can practice in audio-only mode. Video lets you review your body language and delivery.' },
   { q: 'How long can my answers be?', a: 'Up to 3 minutes per answer, like on interview day.' },
-  { q: 'What does it cost?', a: `Your first ${FREE_TRIAL_SESSIONS} practice sessions are free. After that, Premium is a one-time ${PREMIUM_PRICE} for 12 months of access, with no subscription.` },
+  { q: 'What does it cost?', a: `Your first ${FREE_TRIAL_SESSIONS} practice sessions are free. After that, get 12 months of access for ${formatPrice(PLANS.year.amount)} or 1 month for ${formatPrice(PLANS.month.amount)}. Both are one-time payments with no subscription.` },
 ];
 
 export function SectionHeading({ title, subtitle }) {

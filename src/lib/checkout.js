@@ -1,7 +1,8 @@
 import { auth } from '../../firebase';
 
-// Redirects the signed-in user to Stripe Checkout. Stripe sends them back to /dashboard.
-export async function startCheckout() {
+// Redirects the signed-in user to Stripe Checkout for a plan in PLANS ('month' | 'year').
+// Stripe sends them back to /dashboard.
+export async function startCheckout(plan) {
   const user = auth.currentUser;
   if (!user) throw new Error('User not authenticated');
 
@@ -12,6 +13,7 @@ export async function startCheckout() {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
+    body: JSON.stringify({ plan }),
   });
 
   if (!res.ok) {

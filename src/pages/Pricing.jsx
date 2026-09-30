@@ -7,26 +7,37 @@ import { cn } from '@/lib/utils';
 import { FaqSection } from '../components/MarketingSections';
 import { startCheckout } from '../lib/checkout';
 import { useAccount } from '../lib/account';
-import { PREMIUM_PRICE, FREE_TRIAL_SESSIONS } from '../lib/pricing';
+import { PLANS, FREE_TRIAL_SESSIONS, formatPrice } from '../lib/pricing';
 import { livePrograms } from '../professions/index.js';
 import usePageTitle from '../lib/usePageTitle';
 
 export default function Pricing() {
   usePageTitle('Pricing');
   const { user } = useAccount();
-  const [redirecting, setRedirecting] = useState(false);
+  const [redirecting, setRedirecting] = useState(null); // plan id being sent to checkout
   const liveNames = livePrograms().map((p) => p.name.toLowerCase()).join(' and ');
 
-  const handleUpgrade = async () => {
-    setRedirecting(true);
+  // The 1 month plan is the anchor that makes 12 months look like the obvious choice
+  const { month, year } = PLANS;
+  const extra = year.amount - month.amount;
+  const perMonth = Math.round(year.amount / 12);
+
+  const handleBuy = async (plan) => {
+    setRedirecting(plan.id);
     try {
-      await startCheckout();
+      await startCheckout(plan.id);
     } catch (err) {
       console.error('Checkout redirect failed:', err);
       toast.error("We couldn't open checkout. Please try again.");
-      setRedirecting(false);
+      setRedirecting(null);
     }
   };
+
+  const paidFeatures = [
+    'Unlimited practice sessions',
+    'Saved session history and score tracking',
+    'Priority email support',
+  ];
 
   const tiers = [
     {
@@ -44,41 +55,32 @@ export default function Pricing() {
       href: user ? '/dashboard' : '/signup',
     },
     {
-      name: 'Premium',
-      price: PREMIUM_PRICE,
+      name: month.name,
+      price: formatPrice(month.amount),
       priceNote: 'one-time',
-      desc: '12 months of access, enough for a full application cycle.',
-      features: [
-        'Everything in the free trial',
-        'Unlimited practice sessions',
-        'Saved session history and score tracking',
-        'Priority email support',
-      ],
-      footnote: 'No subscription. You won’t be charged again.',
-      cta: user ? (redirecting ? 'Opening checkout…' : 'Upgrade to Premium') : 'Create account',
-      href: user ? null : '/signup',
-      onClick: user ? handleUpgrade : null,
-      highlight: true,
+      desc: '30 days of full access, for an interview coming up soon.',
+      features: [...paidFeatures, 'Access for 30 days'],
+      plan: month,
     },
     {
-      name: '1:1 Mock Interview',
-      price: '$75',
-      priceNote: 'per hour',
-      desc: 'A live mock interview with a current dental student.',
-      features: [
-        '60-minute live session',
-        'Detailed notes and an action plan',
-        'Follow-up Q&A by email',
-      ],
-      cta: 'Request a session',
-      mailto: 'mailto:kam.interviewprep@gmail.com?subject=Mock%20Interview%20Request',
+      name: year.name,
+      price: formatPrice(year.amount),
+      priceNote: 'one-time',
+      valueNote: `Only $${extra} more than 1 month · about $${perMonth}/month`,
+      desc: 'Covers your whole application cycle.',
+      features: [...paidFeatures, 'Access for 12 months'],
+      plan: year,
+      highlight: true,
+      badge: 'Best value',
     },
   ];
 
   const faqs = [
-    { q: 'Is Premium a subscription?', a: `No. It’s a one-time ${PREMIUM_PRICE} payment for 12 months of access. It doesn’t renew automatically.` },
-    { q: 'Does Premium cover every program?', a: `Yes. One account covers ${liveNames} school practice, and you can switch your program from your dashboard at any time.` },
-    { q: 'What happens after my free trial?', a: 'Your account stays. To keep practicing and see your saved sessions, upgrade to Premium.' },
+    { q: 'Are these subscriptions?', a: `No. Both plans are one-time payments: ${formatPrice(month.amount)} for 1 month or ${formatPrice(year.amount)} for 12 months. Nothing renews automatically.` },
+    { q: 'Which plan should I choose?', a: `If your interviews are spread over more than a few weeks, 12 months is the better deal. It’s only $${extra} more and covers your whole application cycle. 1 month works if you have a single interview coming up soon.` },
+    { q: 'Can I add more time later?', a: 'Yes. Buying again adds time on top of any access you have left.' },
+    { q: 'Do the plans cover every program?', a: `Yes. One account covers ${liveNames} school practice, and you can switch your program from your dashboard at any time.` },
+    { q: 'What happens after my free trial?', a: 'Your account stays. To keep practicing and see your saved sessions, choose a plan.' },
     { q: 'Do you offer refunds?', a: 'If the product isn’t a fit, email us within 7 days of purchase and we’ll make it right.' },
     { q: 'Is my data private?', a: 'Your recordings aren’t stored. Audio is sent to our transcription provider only to create your transcript, and transcripts and feedback are saved only if you click “Save Session.” See our Privacy Policy for details.' },
   ];
@@ -88,43 +90,72 @@ export default function Pricing() {
       <section className="border-b bg-white">
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
           <h1 className="text-4xl font-semibold tracking-tight text-gray-900">Pricing</h1>
-          <p className="mt-3 max-w-2xl text-lg text-gray-600">Simple, student-friendly pricing. Try it free, then pay once for the whole cycle.</p>
+          <p className="mt-3 max-w-2xl text-lg text-gray-600">Simple, student-friendly pricing. Try it free, then pay once. No subscriptions.</p>
         </div>
       </section>
 
       <section className="bg-gray-50">
-        <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-16 sm:px-6 md:grid-cols-3 lg:px-8">
-          {tiers.map((t) => {
-            const ctaClass = cn(buttonVariants({ variant: t.highlight ? 'default' : 'outline', size: 'lg' }), 'w-full');
-            return (
-              <div key={t.name} className={cn('flex flex-col rounded-2xl border bg-white p-6', t.highlight && 'ring-2 ring-gray-900')}>
-                <h2 className="text-base font-semibold text-gray-900">{t.name}</h2>
-                <div className="mt-3 flex items-baseline gap-1.5">
-                  <span className="text-4xl font-semibold tracking-tight text-gray-900">{t.price}</span>
-                  <span className="text-sm text-gray-500">{t.priceNote}</span>
-                </div>
-                <p className="mt-2 text-sm text-gray-600">{t.desc}</p>
-                <ul className="mt-6 flex-1 space-y-2.5 text-sm text-gray-700">
-                  {t.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2">
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-teal-600" aria-hidden="true" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <div className="mt-8">
-                  {t.onClick ? (
-                    <button type="button" onClick={t.onClick} disabled={redirecting} className={ctaClass}>{t.cta}</button>
-                  ) : t.mailto ? (
-                    <a href={t.mailto} className={ctaClass}>{t.cta}</a>
-                  ) : (
-                    <Link to={t.href} className={ctaClass}>{t.cta}</Link>
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+            {tiers.map((t) => {
+              const ctaClass = cn(buttonVariants({ variant: t.highlight ? 'default' : 'outline', size: 'lg' }), 'w-full');
+              return (
+                <div key={t.name} className={cn('relative flex flex-col rounded-2xl border bg-white p-6', t.highlight && 'ring-2 ring-gray-900')}>
+                  {t.badge && (
+                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gray-900 px-3 py-1 text-xs font-medium text-white">
+                      {t.badge}
+                    </span>
                   )}
-                  {t.footnote && <p className="mt-3 text-center text-xs text-gray-500">{t.footnote}</p>}
+                  <h2 className="text-base font-semibold text-gray-900">{t.name}</h2>
+                  <div className="mt-3 flex items-baseline gap-1.5">
+                    <span className="text-4xl font-semibold tracking-tight text-gray-900">{t.price}</span>
+                    <span className="text-sm text-gray-500">{t.priceNote}</span>
+                  </div>
+                  {t.valueNote && <p className="mt-1 text-sm font-medium text-teal-700">{t.valueNote}</p>}
+                  <p className="mt-2 text-sm text-gray-600">{t.desc}</p>
+                  <ul className="mt-6 flex-1 space-y-2.5 text-sm text-gray-700">
+                    {t.features.map((f) => (
+                      <li key={f} className="flex items-start gap-2">
+                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-teal-600" aria-hidden="true" />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-8">
+                    {t.plan && user ? (
+                      <button type="button" onClick={() => handleBuy(t.plan)} disabled={redirecting !== null} className={ctaClass}>
+                        {redirecting === t.plan.id ? 'Opening checkout…' : `Get ${t.plan.name.toLowerCase()}`}
+                      </button>
+                    ) : (
+                      <Link to={t.href || '/signup'} className={ctaClass}>{t.cta || 'Create account'}</Link>
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+
+          <p className="mt-6 text-center text-sm text-gray-500">
+            Both plans are one-time payments. Nothing renews, and you won’t be charged again.
+          </p>
+
+          {/* Live coaching, separate from the practice plans */}
+          <div className="mt-10 flex flex-col gap-4 rounded-2xl border bg-white p-6 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-base font-semibold text-gray-900">
+                1:1 Mock Interview <span className="ml-1 font-normal text-gray-500">· $75 per hour</span>
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm text-gray-600">
+                A live 60-minute mock interview with a current dental student, with detailed notes, an action plan, and follow-up Q&amp;A by email.
+              </p>
+            </div>
+            <a
+              href="mailto:kam.interviewprep@gmail.com?subject=Mock%20Interview%20Request"
+              className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'shrink-0')}
+            >
+              Request a session
+            </a>
+          </div>
         </div>
       </section>
 

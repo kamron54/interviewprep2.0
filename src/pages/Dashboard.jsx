@@ -14,7 +14,6 @@ import {
 import { cn } from '@/lib/utils';
 import PageLoader from '../components/PageLoader';
 import ProgramIcon from '../components/ProgramIcon';
-import { startCheckout } from '../lib/checkout';
 import { useAccount } from '../lib/account';
 import { rememberProgram } from '../lib/auth';
 import { FREE_TRIAL_SESSIONS } from '../lib/pricing';
@@ -123,14 +122,8 @@ export default function Dashboard() {
     }
   };
 
-  const handleUpgrade = async () => {
-    try {
-      await startCheckout();
-    } catch (err) {
-      console.error('Checkout redirect failed:', err);
-      toast.error("We couldn't open checkout. Please try again.");
-    }
-  };
+  // Always compare plans side by side on /pricing rather than jumping straight to checkout
+  const handleUpgrade = () => navigate('/pricing');
 
   const handleResendVerification = async () => {
     try {
@@ -240,7 +233,7 @@ export default function Dashboard() {
       case 'paid_active':
         return { text: `Premium${paidDaysRemaining != null ? ` (${paidDaysRemaining} days left)` : ''}`, Icon: Crown, color: 'text-primary', bg: 'bg-primary/10', border: 'border-primary/20' };
       case 'paid_cancelled':
-        return { text: 'Subscription Ended', Icon: Gift, color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200' };
+        return { text: 'Access Ended', Icon: Gift, color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200' };
       default:
         return { text: 'Free Trial', Icon: Star, color: 'text-amber-700', bg: 'bg-warning/10', border: 'border-warning/30' };
     }
@@ -261,7 +254,7 @@ export default function Dashboard() {
                 {userState === 'free_trial_expired'
                   ? 'Upgrade to continue your interview preparation journey.'
                   : userState === 'paid_cancelled'
-                  ? 'Your subscription has ended. Reactivate to continue your progress.'
+                  ? 'Your access has ended. Choose a plan to keep practicing.'
                   : 'Continue your interview preparation journey.'}
               </p>
               <p className="mt-2 inline-flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -328,7 +321,7 @@ export default function Dashboard() {
                   <h3 className="text-base font-semibold text-foreground">{userState === 'paid_cancelled' ? 'Access Ended' : 'Session History Locked'}</h3>
                   <p className="mt-2 text-sm text-muted-foreground max-w-md">
                     {userState === 'paid_cancelled'
-                      ? 'Your subscription has ended. Reactivate to access your complete history and analytics.'
+                      ? 'Your access has ended. Choose a plan to see your saved sessions and keep practicing.'
                       : 'Upgrade to keep practicing and see your saved sessions and scores.'}
                   </p>
                 </div>
@@ -395,10 +388,10 @@ export default function Dashboard() {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <Gift className="h-5 w-5 text-orange-600" />
-                <span className="font-medium text-orange-800">Subscription Ended — Reactivate your access</span>
+                <span className="font-medium text-orange-800">Your access has ended</span>
               </div>
               <Button size="sm" className="bg-orange-600 text-white hover:bg-orange-700" onClick={handleUpgrade}>
-                Reactivate
+                See plans
               </Button>
             </div>
           </div>
@@ -451,8 +444,13 @@ export default function Dashboard() {
                 <Crown className="h-5 w-5 text-primary" />
                 <span className="font-medium text-foreground">Premium Features Active</span>
               </div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-white px-3 py-1">
-                <span className="text-xs text-primary">{paidDaysRemaining != null ? `${paidDaysRemaining} days remaining` : 'Active'}</span>
+              <div className="flex items-center gap-3">
+                <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-white px-3 py-1">
+                  <span className="text-xs text-primary">{paidDaysRemaining != null ? `${paidDaysRemaining} days remaining` : 'Active'}</span>
+                </div>
+                {paidDaysRemaining != null && paidDaysRemaining <= 7 && (
+                  <Button size="sm" variant="outline" onClick={handleUpgrade}>Extend access</Button>
+                )}
               </div>
             </div>
           </div>
