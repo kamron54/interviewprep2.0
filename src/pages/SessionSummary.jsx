@@ -33,7 +33,6 @@ import {
   Loader2,
   MicOff,
   Copy as CopyIcon,
-  Video as VideoIcon,
 } from 'lucide-react';
 
 // --- heuristics to ignore clear hallucinations/noise ---
@@ -59,6 +58,29 @@ function isMeaningfulTranscript(text) {
   for (const p of hallucinatedPhrases) rest = rest.split(p).join(' ');
   return rest.split(/\s+/).filter(Boolean).length >= 3;
 }
+
+// Checklists for students reviewing their own recording, collapsed under the player by default
+const SELF_REVIEW = {
+  video: {
+    title: 'What to watch for',
+    items: [
+      ['Eye contact', 'are you looking at the camera, like it’s the interviewer?'],
+      ['Pace', 'steady, with natural pauses instead of rushing?'],
+      ['Filler words', 'how often do “um,” “like,” and “you know” show up?'],
+      ['Body language', 'upright posture, calm hands, a natural smile?'],
+      ['Energy', 'do you sound genuinely interested in what you’re saying?'],
+    ],
+  },
+  audio: {
+    title: 'What to listen for',
+    items: [
+      ['Pace', 'steady, with natural pauses instead of rushing?'],
+      ['Filler words', 'how often do “um,” “like,” and “you know” show up?'],
+      ['Tone and energy', 'do you sound warm and genuinely interested?'],
+      ['Clarity', 'are your main points easy to follow?'],
+    ],
+  },
+};
 
 // Runs fn over items with at most `limit` in flight, keeping results in order
 async function mapWithConcurrency(items, limit, fn) {
@@ -377,12 +399,22 @@ useEffect(() => {
    }
  };
 
+  // Live video sessions put each recording beside its feedback, so they get a wider page;
+  // text-only views (saved sessions, audio-only) stay at a comfortable reading width
+  const pageWidth = !isReadonly && recordings.some((r) => r.videoUrl) ? 'max-w-6xl' : 'max-w-3xl';
+
+  // Change in overall score vs. the previous session (scores are out of 100)
+  const improvementText =
+    improvement === null ? 'First scored session'
+    : improvement == null ? null
+    : improvement === 0 ? 'Same as last session'
+    : `${improvement > 0 ? '+' : '−'}${Math.abs(improvement)} from last session`;
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Local page header (global Header is hidden on /summary) */}
       <header className="border-b border-border bg-card">
-        <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-2 px-4 py-3">
+        <div className={cn('mx-auto flex flex-wrap items-center justify-between gap-2 px-4 py-3', pageWidth)}>
           <Button
             variant="ghost"
             size="sm"
@@ -430,7 +462,7 @@ useEffect(() => {
         </div>
       </header>
 
-      <div className="mx-auto max-w-3xl px-4 py-8">
+      <div className={cn('mx-auto px-4 py-8', pageWidth)}>
         {/* Summary strip */}
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -441,9 +473,7 @@ useEffect(() => {
               {[
                 `${questionsCount} question${questionsCount === 1 ? '' : 's'}`,
                 totalTimeFormatted,
-                improvement === null
-                  ? 'First scored session'
-                  : improvement != null ? `${improvement >= 0 ? '+' : ''}${improvement} pts vs last session` : null,
+                improvementText,
               ].filter(Boolean).join(' · ')}
             </p>
           </div>
@@ -528,10 +558,39 @@ function RecordingPlayer({ item }) {
   );
 }
 
-// One answer: the question, its feedback first, then recording / transcript / tip behind toggles
+// Collapsed checklist under the player, for students who want guidance reviewing themselves
+function SelfReviewGuide({ kind }) {
+  const [open, setOpen] = useState(false);
+  const guide = SELF_REVIEW[kind];
+  return (
+    <div className="mt-2">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+      >
+        {guide.title}
+        <ChevronDown className={cn('h-4 w-4 transition-transform', open && 'rotate-180')} />
+      </button>
+      {open && (
+        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-gray-700">
+          {guide.items.map(([label, question]) => (
+            <li key={label}><span className="font-medium text-gray-900">{label}:</span> {question}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// One answer: the question, the recording beside its feedback (live sessions), then transcript / tip toggles
 function AnswerCard({ item, isReadonly, onCopyTranscript }) {
-  const [panel, setPanel] = useState(null); // 'recording' | 'transcript' | 'tip' | null
+  const [panel, setPanel] = useState(null); // 'transcript' | 'tip' | null
   const feedback = normalizeFeedback(item.feedback);
+  // Recordings only exist right after a session; saved sessions never have them
+  const hasVideo = !isReadonly && !!item.videoUrl;
+  const hasAudioOnly = !isReadonly && !item.videoUrl && !!item.audioUrl;
 
   const questionHeader = (
     <div className="min-w-0">
@@ -552,11 +611,29 @@ function AnswerCard({ item, isReadonly, onCopyTranscript }) {
   }
 
   const toggles = [
-    !isReadonly && (item.videoUrl || item.audioUrl) &&
-      { key: 'recording', label: item.videoUrl ? 'Watch recording' : 'Play recording', Icon: VideoIcon },
     item.transcript && { key: 'transcript', label: 'Transcript', Icon: FileText },
     item.tip && { key: 'tip', label: 'Interview tip', Icon: Lightbulb },
   ].filter(Boolean);
+
+  const feedbackBlock = item.noSpeech || item.error ? (
+    <div className="flex gap-3 rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
+      {item.noSpeech
+        ? <MicOff className="mt-0.5 h-4 w-4 shrink-0" />
+        : <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />}
+      <p>
+        {item.noSpeech
+          ? 'We couldn’t hear an answer in this recording. Check that your microphone is working and try this question again in your next session.'
+          : 'Something went wrong while analyzing this answer, so it wasn’t scored. Your other answers weren’t affected.'}
+      </p>
+    </div>
+  ) : feedback?.legacyHtml ? (
+    <div
+      className="whitespace-pre-wrap text-sm text-gray-700"
+      dangerouslySetInnerHTML={{ __html: feedback.legacyHtml }}
+    />
+  ) : feedback ? (
+    <FeedbackDetails feedback={feedback} />
+  ) : null;
 
   return (
     <Card className="p-5 sm:p-6">
@@ -566,27 +643,26 @@ function AnswerCard({ item, isReadonly, onCopyTranscript }) {
         <div className="shrink-0"><AnswerStatus item={item} feedback={feedback} /></div>
       </div>
 
-      <div className="mt-4">
-        {item.noSpeech || item.error ? (
-          <div className="flex gap-3 rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
-            {item.noSpeech
-              ? <MicOff className="mt-0.5 h-4 w-4 shrink-0" />
-              : <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />}
-            <p>
-              {item.noSpeech
-                ? 'We couldn’t hear an answer in this recording. Check that your microphone is working and try this question again in your next session.'
-                : 'Something went wrong while analyzing this answer, so it wasn’t scored. Your other answers weren’t affected.'}
-            </p>
+      {hasVideo ? (
+        // Watching yourself back is the main event: video on the left, feedback beside it
+        <div className="mt-4 grid gap-6 lg:grid-cols-5">
+          <div className="lg:col-span-3">
+            <RecordingPlayer item={item} />
+            <SelfReviewGuide kind="video" />
           </div>
-        ) : feedback?.legacyHtml ? (
-          <div
-            className="whitespace-pre-wrap text-sm text-gray-700"
-            dangerouslySetInnerHTML={{ __html: feedback.legacyHtml }}
-          />
-        ) : feedback ? (
-          <FeedbackDetails feedback={feedback} />
-        ) : null}
-      </div>
+          <div className="lg:col-span-2">{feedbackBlock}</div>
+        </div>
+      ) : (
+        <div className="mt-4 space-y-4">
+          {hasAudioOnly && (
+            <div>
+              <RecordingPlayer item={item} />
+              <SelfReviewGuide kind="audio" />
+            </div>
+          )}
+          {feedbackBlock}
+        </div>
+      )}
 
       {toggles.length > 0 && (
         <div className="mt-5 border-t pt-3">
@@ -607,7 +683,6 @@ function AnswerCard({ item, isReadonly, onCopyTranscript }) {
               </Button>
             ))}
           </div>
-          {panel === 'recording' && <div className="mt-3"><RecordingPlayer item={item} /></div>}
           {panel === 'transcript' && (
             <div className="mt-3 rounded-lg bg-muted/50 p-3 text-sm text-gray-700">
               <p className="whitespace-pre-wrap">{item.transcript}</p>
