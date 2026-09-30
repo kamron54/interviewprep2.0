@@ -5,7 +5,6 @@ const medical = {
   displayName: 'Medical School',
   tag: 'Medical', // Firestore questions.mainTags value
   status: 'live',
-  cardBlurb: 'Practice “Why medicine?”, ethical scenarios, and behavioral questions.',
   landing: {
     audience: 'medical school',
     heroTitle: 'Nail Your Medical School Interviews.',

@@ -6,7 +6,6 @@ const dental = {
   displayName: 'Dental School',
   tag: 'Dental', // Firestore questions.mainTags value
   status: 'live', // 'live' | 'soon'
-  cardBlurb: 'Practice “Why dentistry?”, the Big 3, and ethical scenarios.',
   landing: {
     audience: 'dental school',
     heroTitle: 'Nail Your Dental School Interviews.',

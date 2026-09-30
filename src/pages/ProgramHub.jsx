@@ -77,8 +77,7 @@ export default function ProgramHub() {
                   </div>
                   <h3 className="text-lg font-semibold text-gray-900">{p.displayName}</h3>
                 </div>
-                <p className="mt-3 text-sm text-gray-600">{p.cardBlurb}</p>
-                <span className="mt-5 inline-flex items-center gap-1 text-sm font-medium text-gray-900">
+                <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-gray-900">
                   Get started <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
                 </span>
               </Link>

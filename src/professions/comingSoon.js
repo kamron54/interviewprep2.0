@@ -7,7 +7,6 @@ export const physicianAssistant = {
   displayName: 'Physician Assistant (PA) School',
   tag: 'Physician Assistant',
   status: 'soon',
-  cardBlurb: 'Mock interviews for PA programs.',
   landing: {
     heroTitle: 'PA school interview practice is on the way.',
     heroSubtitle: 'We’re building mock interviews for physician assistant programs. Leave your email and we’ll let you know when it opens.',
@@ -20,7 +19,6 @@ export const physicalTherapy = {
   displayName: 'Physical Therapy (PT) School',
   tag: 'Physical Therapy',
   status: 'soon',
-  cardBlurb: 'Mock interviews for DPT programs.',
   landing: {
     heroTitle: 'PT school interview practice is on the way.',
     heroSubtitle: 'We’re building mock interviews for physical therapy programs. Leave your email and we’ll let you know when it opens.',
@@ -33,7 +31,6 @@ export const pharmacy = {
   displayName: 'Pharmacy School',
   tag: 'Pharmacy',
   status: 'soon',
-  cardBlurb: 'Mock interviews for PharmD programs.',
   landing: {
     heroTitle: 'Pharmacy school interview practice is on the way.',
     heroSubtitle: 'We’re building mock interviews for pharmacy programs. Leave your email and we’ll let you know when it opens.',

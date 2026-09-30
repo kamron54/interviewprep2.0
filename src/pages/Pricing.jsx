@@ -20,7 +20,6 @@ export default function Pricing() {
   // The 1 month plan is the anchor that makes 12 months look like the obvious choice
   const { month, year } = PLANS;
   const extra = year.amount - month.amount;
-  const perMonth = Math.round(year.amount / 12);
 
   const handleBuy = async (plan) => {
     setRedirecting(plan.id);
@@ -66,7 +65,6 @@ export default function Pricing() {
       name: year.name,
       price: formatPrice(year.amount),
       priceNote: 'one-time',
-      valueNote: `Only $${extra} more than 1 month · about $${perMonth}/month`,
       desc: 'Covers your whole application cycle.',
       features: [...paidFeatures, 'Access for 12 months'],
       plan: year,
@@ -111,7 +109,6 @@ export default function Pricing() {
                     <span className="text-4xl font-semibold tracking-tight text-gray-900">{t.price}</span>
                     <span className="text-sm text-gray-500">{t.priceNote}</span>
                   </div>
-                  {t.valueNote && <p className="mt-1 text-sm font-medium text-teal-700">{t.valueNote}</p>}
                   <p className="mt-2 text-sm text-gray-600">{t.desc}</p>
                   <ul className="mt-6 flex-1 space-y-2.5 text-sm text-gray-700">
                     {t.features.map((f) => (
