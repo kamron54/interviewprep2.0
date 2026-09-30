@@ -62,7 +62,7 @@ export default function ProgramHub() {
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
           <SectionHeading
             title="Choose your program"
-            subtitle="Each program has its own question bank and interview prep."
+            subtitle="Each program has its own question bank and tailored feedback."
           />
           <div className="mx-auto mt-10 grid max-w-5xl gap-6 md:grid-cols-2">
             {live.map((p) => (
