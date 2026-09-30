@@ -19,8 +19,8 @@ export default async function handler(req, res) {
     if (!plan) {
       return res.status(400).json({ error: 'Unknown plan' });
     }
-    if (!plan.stripeProductId) {
-      console.error(`❌ No Stripe product ID set for plan "${plan.id}" in src/lib/pricing.js`);
+    if (!plan.stripePriceId) {
+      console.error(`❌ No Stripe price ID set for plan "${plan.id}" in src/lib/pricing.js`);
       return res.status(500).json({ error: 'Checkout isn’t set up for this plan yet' });
     }
 
@@ -29,12 +29,7 @@ export default async function handler(req, res) {
       payment_method_types: ['card'],
       line_items: [
         {
-          // Charge the amount from src/lib/pricing.js, so the site and checkout always agree
-          price_data: {
-            currency: 'usd',
-            product: plan.stripeProductId,
-            unit_amount: plan.amount * 100, // cents
-          },
+          price: plan.stripePriceId,
           quantity: 1,
         },
       ],
