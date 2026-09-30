@@ -4,13 +4,17 @@ import { getUserFromRequest } from '../firebase-admin';
 // current models and prices: https://developers.openai.com/api/docs/pricing
 const FEEDBACK_MODEL = 'gpt-6-luna';
 
-// Structured Outputs: the model must reply with exactly this shape, so there's nothing to repair
+// Structured Outputs: the model must reply with exactly this shape, so there's nothing to repair.
+// Field order matters: the model writes what works and what to change before it picks scores.
 const FEEDBACK_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['overallScore', 'sectionScores', 'summary', 'suggestions'],
+  required: ['genuineAttempt', 'strengths', 'suggestions', 'summary', 'sectionScores'],
   properties: {
-    overallScore: { type: 'integer' },
+    genuineAttempt: { type: 'boolean' },
+    strengths: { type: 'array', items: { type: 'string' } },
+    suggestions: { type: 'array', items: { type: 'string' } },
+    summary: { type: 'string' },
     sectionScores: {
       type: 'object',
       additionalProperties: false,
@@ -21,10 +25,14 @@ const FEEDBACK_SCHEMA = {
         content: { type: 'integer' },
       },
     },
-    summary: { type: 'string' },
-    suggestions: { type: 'array', items: { type: 'string' } },
   },
 };
+
+// Overall score = weighted average of the sections, computed here so it always matches the bars
+const SECTION_WEIGHTS = { overallImpression: 0.3, clarityStructure: 0.3, content: 0.4 };
+
+// Genuine attempts never score below this; only off-topic or nonsense answers can
+const GENUINE_ATTEMPT_FLOOR = 50;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -43,15 +51,22 @@ export default async function handler(req, res) {
 
   // --- Scoring instructions (the reply shape is enforced by FEEDBACK_SCHEMA) ---
   const instructions = `
-You are an interview coach for ${profession} school admissions. Score the candidate's answer to the interview question.
+You are a supportive, experienced interview coach for ${profession} school admissions. A student recorded an answer to a practice interview question. You'll see the question and a transcript of what they said.
+
+Interview answers are personal, and there is no single right answer. Judge whether the answer is genuine, relevant, specific, and clearly organized, not whether it matches a template. Don't nitpick or invent problems. It's a transcript of speech, so don't penalize filler words or small verbal slips.
 
 Return:
-- overallScore: 0-100, the weighted average of the section scores: overallImpression 30%, clarityStructure 30%, content 40%.
-- sectionScores: overallImpression, clarityStructure, and content, each 0-100.
-- summary: 2-4 sentences of feedback, written to the candidate in the second person.
-- suggestions: 1-3 specific, actionable ways to improve this answer.
-
-Calibrate to the admissions bar: 70 = acceptable, 85 = strong, 95+ = outstanding. Be concise and professional.
+- genuineAttempt: false only if the answer is off-topic, nonsensical, or doesn't try to answer the question. Otherwise true.
+- strengths: 1-3 specific things that work well and are worth keeping.
+- suggestions: 0-3 specific, optional ways to make the answer stronger. Include one only if it would make a real difference. If the answer is already strong, return an empty list or a single small refinement.
+- summary: 2-3 sentences written to the student in the second person. Lead with what works. If the answer is strong, say so plainly and tell them they don't need to change it.
+- sectionScores: overallImpression, clarityStructure, and content, each 0-100, on this scale:
+  90-100 Excellent: genuine, specific, and well organized; ready for interview day, even if not perfect.
+  80-89 Strong: works well; small optional polish at most.
+  70-79 Solid: a good foundation with one or two clear ways to improve.
+  60-69 Developing: relevant, but vague, rambling, or missing important pieces.
+  50-59 Weak: only partly answers the question.
+  Below 50: only when genuineAttempt is false.
 `.trim();
 
   try {
@@ -93,18 +108,26 @@ Calibrate to the admissions bar: 70 = acceptable, 85 = strong, 95+ = outstanding
       return res.status(502).json({ error: "Could not generate feedback" });
     }
 
-    // Clamp values and coerce numbers just in case
-    const clamp = (n) => Math.max(0, Math.min(100, Number.isFinite(+n) ? +n : 0));
+    // Clamp values and coerce numbers just in case; genuine attempts never drop below the floor
+    const clamp = (n) => Math.max(0, Math.min(100, Number.isFinite(+n) ? Math.round(+n) : 0));
+    const floor = parsed.genuineAttempt === false ? 0 : GENUINE_ATTEMPT_FLOOR;
+    const sectionScores = {};
+    for (const key of Object.keys(SECTION_WEIGHTS)) {
+      sectionScores[key] = Math.max(floor, clamp(parsed.sectionScores?.[key]));
+    }
+    const overallScore = Math.round(
+      Object.entries(SECTION_WEIGHTS).reduce((sum, [key, weight]) => sum + sectionScores[key] * weight, 0)
+    );
+    const list = (items) =>
+      Array.isArray(items) ? items.filter((s) => typeof s === "string" && s.trim()).slice(0, 3) : [];
+
     const feedback = {
       rubricVersion: "v2", // v1 = gpt-3.5-turbo scoring
-      overallScore: clamp(parsed.overallScore),
-      sectionScores: {
-        overallImpression: clamp(parsed.sectionScores?.overallImpression),
-        clarityStructure: clamp(parsed.sectionScores?.clarityStructure),
-        content: clamp(parsed.sectionScores?.content),
-      },
+      overallScore,
+      sectionScores,
       summary: String(parsed.summary || ""),
-      suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions.slice(0, 3) : [],
+      strengths: list(parsed.strengths),
+      suggestions: list(parsed.suggestions), // may be empty: strong answers don't need changes
     };
 
     return res.status(200).json({ feedback });

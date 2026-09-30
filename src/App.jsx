@@ -13,6 +13,7 @@ import InterviewSession from './pages/InterviewSession';
 import SessionSummary from './pages/SessionSummary';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminQuestionManager from './pages/AdminQuestionManager';
+import AdminFeedbackLab from './pages/AdminFeedbackLab';
 import Pricing from './pages/Pricing';
 import Resources from './pages/Resources';
 import EthicsGuide from './pages/guides/EthicsGuide';
@@ -76,6 +77,7 @@ function AppRoutes() {
         {/* Admin */}
         <Route path="admin"           element={<Protected><AdminDashboard /></Protected>} />
         <Route path="admin/questions" element={<Protected><AdminQuestionManager /></Protected>} />
+        <Route path="admin/feedback-lab" element={<Protected><AdminFeedbackLab /></Protected>} />
 
         {/* Program pages (/dental, /medical, …); unknown slugs go home */}
         <Route path=":program" element={<ProgramLanding />} />

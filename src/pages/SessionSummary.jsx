@@ -19,6 +19,7 @@ import usePageTitle from '../lib/usePageTitle';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import FeedbackDetails, { ScoreBadge } from '../components/FeedbackDetails';
 
 // Icons
 import {
@@ -97,6 +98,7 @@ function normalizeFeedback(raw) {
         content: clamp01(raw.sectionScores?.content),
       },
       summary: raw.summary || '',
+      strengths: Array.isArray(raw.strengths) ? raw.strengths : [],
       suggestions: Array.isArray(raw.suggestions) ? raw.suggestions : [],
       rubricVersion: raw.rubricVersion || 'v1',
     };
@@ -338,6 +340,7 @@ useEffect(() => {
            content: fb.sectionScores?.content ?? 0,
          },
          summary: fb.summary || '',
+         strengths: Array.isArray(fb.strengths) ? fb.strengths : [],
          suggestions: Array.isArray(fb.suggestions) ? fb.suggestions : [],
          rubricVersion: fb.rubricVersion || 'v1',
        } : null,
@@ -539,9 +542,7 @@ useEffect(() => {
   if (item.noSpeech) return <Badge variant="secondary">No answer detected</Badge>;
   if (!fb) return <Badge variant="secondary">Not scored</Badge>;
   if (fb.legacyHtml) return <Badge variant="secondary">Feedback</Badge>;
-  const s = Math.round(fb.overallScore || 0);
-  const variant = s >= 80 ? 'default' : s >= 70 ? 'secondary' : 'destructive';
-  return <Badge variant={variant}>{s}%</Badge>;
+  return <ScoreBadge score={fb.overallScore} />;
 })()}
                   </div>
                   <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{item.question}</p>
@@ -642,38 +643,7 @@ useEffect(() => {
     );
   }
 
-  const sections = [
-    ['Overall Impression', fb.sectionScores?.overallImpression],
-    ['Clarity & Structure', fb.sectionScores?.clarityStructure],
-    ['Content', fb.sectionScores?.content],
-  ];
-
-  return (
-    <div className="space-y-3">
-      <div className="rounded-lg border bg-card p-3">
-        <p className="font-medium text-sm mb-2">Section Scores</p>
-        {sections.map(([label, val]) => (
-          <div key={label} className="mb-2">
-            <div className="flex justify-between text-xs mb-1">
-              <span className="text-muted-foreground">{label}</span>
-              <span className="text-foreground">{Math.round(val ?? 0)}%</span>
-            </div>
-            <Progress value={Math.round(val ?? 0)} className="h-2" />
-          </div>
-        ))}
-      </div>
-
-      <div className="rounded-lg border bg-yellow-50 p-3">
-        <p className="font-medium text-sm mb-1">Feedback Summary</p>
-        <p className="text-sm text-foreground/90 whitespace-pre-wrap">{fb.summary}</p>
-        {Array.isArray(fb.suggestions) && fb.suggestions.length > 0 && (
-          <ul className="mt-2 list-disc list-inside text-sm text-foreground/90">
-            {fb.suggestions.map((s, i) => <li key={i}>{s}</li>)}
-          </ul>
-        )}
-      </div>
-    </div>
-  );
+  return <FeedbackDetails feedback={fb} />;
 })()}
                     </div>
                   )}
