@@ -16,25 +16,23 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner"; // or your toast of choice
 import usePageTitle from '../lib/usePageTitle';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { cn } from '@/lib/utils';
+import FeedbackDetails, { ScoreBadge } from '../components/FeedbackDetails';
 
 // Icons
 import {
+  ChevronDown,
   ChevronLeft,
-  Award,
-  BarChart3,
-  Clock,
-  TrendingUp,
-  TrendingDown,
   AlertCircle,
   Bookmark,
   FileText,
+  Lightbulb,
   Loader2,
   MicOff,
   Copy as CopyIcon,
-  Video as VideoIcon,
 } from 'lucide-react';
 
 // --- heuristics to ignore clear hallucinations/noise ---
@@ -61,6 +59,43 @@ function isMeaningfulTranscript(text) {
   return rest.split(/\s+/).filter(Boolean).length >= 3;
 }
 
+// Checklists for students reviewing their own recording, collapsed under the player by default
+const SELF_REVIEW = {
+  video: {
+    title: 'What to watch for',
+    items: [
+      ['Eye contact', 'are you looking at the camera, like it’s the interviewer?'],
+      ['Pace', 'steady, with natural pauses instead of rushing?'],
+      ['Filler words', 'how often do “um,” “like,” and “you know” show up?'],
+      ['Body language', 'upright posture, calm hands, a natural smile?'],
+      ['Energy', 'do you sound genuinely interested in what you’re saying?'],
+    ],
+  },
+  audio: {
+    title: 'What to listen for',
+    items: [
+      ['Pace', 'steady, with natural pauses instead of rushing?'],
+      ['Filler words', 'how often do “um,” “like,” and “you know” show up?'],
+      ['Tone and energy', 'do you sound warm and genuinely interested?'],
+      ['Clarity', 'are your main points easy to follow?'],
+    ],
+  },
+};
+
+// Runs fn over items with at most `limit` in flight, keeping results in order
+async function mapWithConcurrency(items, limit, fn) {
+  const results = new Array(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i], i);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
 // --- scoring helpers -------------------------------------------------------
 const clamp01 = (n) => Math.max(0, Math.min(100, Number.isFinite(+n) ? +n : 0));
 
@@ -83,6 +118,7 @@ function normalizeFeedback(raw) {
         content: clamp01(raw.sectionScores?.content),
       },
       summary: raw.summary || '',
+      strengths: Array.isArray(raw.strengths) ? raw.strengths : [],
       suggestions: Array.isArray(raw.suggestions) ? raw.suggestions : [],
       rubricVersion: raw.rubricVersion || 'v1',
     };
@@ -119,17 +155,13 @@ export default function SessionSummary() {
   }, [totalSessionTime]);
 
 
-  const [expandedTips, setExpandedTips] = useState({});
   const [saveOpen, setSaveOpen] = useState(false);
   const [saveTitle, setSaveTitle] = useState('');
   const [results, setResults] = useState([]);
-  const [loadingIndex, setLoadingIndex] = useState(null);
-
-  const progressPercent = useMemo(() => {
-    if (!recordings.length) return 0;
-    const idx = loadingIndex ?? 0;
-    return Math.round((idx / recordings.length) * 100);
-  }, [loadingIndex, recordings.length]);
+  // Recorded answers that have finished transcription + feedback (they're analyzed in parallel)
+  const [doneCount, setDoneCount] = useState(0);
+  const answersToAnalyze = useMemo(() => recordings.filter((r) => !r.skipped && r.audioUrl).length, [recordings]);
+  const progressPercent = answersToAnalyze ? Math.round((doneCount / answersToAnalyze) * 100) : 0;
 
   const answeredCount = useMemo(() => results.filter((r) => !r?.skipped && (r?.audioUrl || r?.videoUrl)).length, [results]);
   const skippedCount = useMemo(() => results.filter((r) => r?.skipped).length, [results]);
@@ -219,59 +251,58 @@ useEffect(() => {
     if (!isReadonly && recordings.length === 0) navigate('/dashboard', { replace: true });
   }, [isReadonly, recordings.length, navigate]);
 
-  // Process responses sequentially (keeps your current behavior)
+  // Analyze all answers at once (up to 5 in flight) instead of one after another
   // Normal (live) processing path — skip entirely in read-only mode
   useEffect(() => {
     if (isReadonly) return;
     let cancelled = false;
 
-    const processResponses = async () => {
-      const all = [];
-
-      for (let i = 0; i < recordings.length; i++) {
-        if (cancelled) return;
-        const item = recordings[i];
-
-        if (item.skipped || !item.audioUrl) {
-          all.push({ ...item, originalIndex: i, transcript: null, feedback: null });
-          continue;
-        }
-
-        setLoadingIndex(i);
-
-        try {
-          // fetch blob from in-memory object URL
-          const res = await fetch(item.audioUrl);
-          const audioBlob = await res.blob();
-          const transcriptResult = await transcribeAudio(audioBlob);
-
-          if (transcriptResult.limitReached) {
-            toast.error(
-              transcriptResult.error ||
-                "We’ve noticed unusually heavy usage on your account. To ensure fair access for all users, we’ve temporarily paused usage. If you believe this is a mistake, please contact support.",
-              { duration: 10000 }
-            );
-            navigate('/dashboard');
-            return;
-          }
-
-          const transcript = transcriptResult.transcript || '';
-
-          if (isMeaningfulTranscript(transcript)) {
-            const feedback = await getFeedback(item.question, transcript, profession);
-            all.push({ ...item, originalIndex: i, transcript, feedback });
-          } else {
-            all.push({ ...item, originalIndex: i, transcript: '', feedback: null, noSpeech: true });
-          }
-        } catch (err) {
-          console.error(`Error processing response ${i + 1}`, err);
-          all.push({ ...item, originalIndex: i, transcript: '', feedback: null, error: true });
-        }
+    const analyzeAnswer = async (item, i) => {
+      if (item.skipped || !item.audioUrl) {
+        return { ...item, originalIndex: i, transcript: null, feedback: null };
       }
 
+      try {
+        // fetch blob from in-memory object URL
+        const res = await fetch(item.audioUrl);
+        const audioBlob = await res.blob();
+        const transcriptResult = await transcribeAudio(audioBlob);
+
+        if (transcriptResult.limitReached) {
+          return { limitReached: true, limitError: transcriptResult.error };
+        }
+
+        const transcript = transcriptResult.transcript || '';
+
+        if (isMeaningfulTranscript(transcript)) {
+          const feedback = await getFeedback(item.question, transcript, profession);
+          return { ...item, originalIndex: i, transcript, feedback };
+        }
+        return { ...item, originalIndex: i, transcript: '', feedback: null, noSpeech: true };
+      } catch (err) {
+        console.error(`Error processing response ${i + 1}`, err);
+        return { ...item, originalIndex: i, transcript: '', feedback: null, error: true };
+      } finally {
+        if (!cancelled) setDoneCount((n) => n + 1);
+      }
+    };
+
+    const processResponses = async () => {
+      const all = await mapWithConcurrency(recordings, 5, analyzeAnswer);
       if (cancelled) return;
+
+      const limited = all.find((r) => r.limitReached);
+      if (limited) {
+        toast.error(
+          limited.limitError ||
+            "We’ve noticed unusually heavy usage on your account. To ensure fair access for all users, we’ve temporarily paused usage. If you believe this is a mistake, please contact support.",
+          { duration: 10000 }
+        );
+        navigate('/dashboard');
+        return;
+      }
+
       setResults(all);
-      setLoadingIndex(null);
     };
 
     processResponses();
@@ -328,6 +359,7 @@ useEffect(() => {
            content: fb.sectionScores?.content ?? 0,
          },
          summary: fb.summary || '',
+         strengths: Array.isArray(fb.strengths) ? fb.strengths : [],
          suggestions: Array.isArray(fb.suggestions) ? fb.suggestions : [],
          rubricVersion: fb.rubricVersion || 'v1',
        } : null,
@@ -367,31 +399,36 @@ useEffect(() => {
    }
  };
 
+  // Live video sessions put each recording beside its feedback, so they get a wider page;
+  // text-only views (saved sessions, audio-only) stay at a comfortable reading width
+  const pageWidth = !isReadonly && recordings.some((r) => r.videoUrl) ? 'max-w-6xl' : 'max-w-3xl';
+
+  // Change in overall score vs. the previous session (scores are out of 100)
+  const improvementText =
+    improvement === null ? 'First scored session'
+    : improvement == null ? null
+    : improvement === 0 ? 'Same as last session'
+    : `${improvement > 0 ? '+' : '−'}${Math.abs(improvement)} from last session`;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gray-50">
       {/* Local page header (global Header is hidden on /summary) */}
       <header className="border-b border-border bg-card">
-        <div className="container mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate('/dashboard')}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <ChevronLeft className="h-4 w-4 mr-2" /> Back to Dashboard
-            </Button>
-            <Badge variant="outline" className="hidden sm:inline-flex">
-              {isReadonly ? 'Saved session' : 'Practice session complete'}
-            </Badge>
-          </div>
+        <div className={cn('mx-auto flex flex-wrap items-center justify-between gap-2 px-4 py-3', pageWidth)}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/dashboard')}
+            className="-ml-3 text-muted-foreground hover:text-foreground"
+          >
+            <ChevronLeft className="h-4 w-4" /> Dashboard
+          </Button>
           <div className="flex items-center gap-2">
             {results.length > 0 && !isReadonly && (
               <AlertDialog open={saveOpen} onOpenChange={setSaveOpen}>
                 <AlertDialogTrigger asChild>
                   <Button variant="outline">
-                    <Bookmark className="h-4 w-4 mr-2" /> Save Session
+                    <Bookmark className="h-4 w-4" /> Save session
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
@@ -420,259 +457,245 @@ useEffect(() => {
                 </AlertDialogContent>
               </AlertDialog>
             )}
-            <Button onClick={() => navigate('/setup')}>Start New Session</Button>
+            <Button onClick={() => navigate('/setup')}>Start new session</Button>
           </div>
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-8">
-        {/* Overview */}
-        <Card className="mb-8">
-          <CardHeader className="text-center">
-            <div className="mx-auto w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-              <Award className="h-10 w-10 text-primary" />
-            </div>
-            <CardTitle className="text-2xl">
+      <div className={cn('mx-auto px-4 py-8', pageWidth)}>
+        {/* Summary strip */}
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
               {isReadonly ? (saved?.title || 'Saved session') : 'Session complete'}
-            </CardTitle>
-            <p className="text-muted-foreground">
-              {isReadonly ? 'Your saved scores, transcripts, and feedback' : 'Here’s your feedback on each answer'}
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {[
+                `${questionsCount} question${questionsCount === 1 ? '' : 's'}`,
+                totalTimeFormatted,
+                improvementText,
+              ].filter(Boolean).join(' · ')}
             </p>
-          </CardHeader>
-
-          <div className="mx-auto mb-6 max-w-md px-6 text-center">
-            {isProcessing ? (
-              <div className="flex flex-col items-center gap-2 py-2 text-muted-foreground">
-                <Loader2 className="h-8 w-8 animate-spin" aria-hidden="true" />
-                <p>Analyzing your answers…</p>
+          </div>
+          {!isProcessing && results.length > 0 && (
+            hasScore ? (
+              <div className="text-right">
+                <div className="text-3xl font-semibold tracking-tight text-gray-900">{overallAvg}%</div>
+                <p className="text-xs text-muted-foreground">Overall</p>
               </div>
-            ) : hasScore ? (
-              <>
-                <div className="text-4xl font-bold text-foreground mb-2">{overallAvg}%</div>
-                <p className="text-muted-foreground">Overall Score</p>
-                <Progress value={overallAvg} className="mt-4 h-3" />
-              </>
             ) : (
-              <>
-                <div className="text-4xl font-bold text-muted-foreground mb-2">—</div>
-                <p className="text-muted-foreground">No answers were scored this session</p>
-              </>
-            )}
+              <p className="text-sm text-muted-foreground">No answers were scored</p>
+            )
+          )}
+        </div>
+
+        {/* The one loading indicator, while answers are transcribed and scored */}
+        {isProcessing && (
+          <div className="mt-6 rounded-xl border bg-white p-4">
+            <div className="mb-2 flex items-center justify-between text-sm text-muted-foreground">
+              <span className="inline-flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                Analyzing your answers…
+              </span>
+              <span>{doneCount} of {answersToAnalyze}</span>
+            </div>
+            <Progress value={progressPercent} className="h-1.5" />
           </div>
-
-          <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Total Time */}
-            <div className="text-center p-4 bg-card rounded-lg border">
-              <Clock className="h-6 w-6 text-primary mx-auto mb-2" />
-              <div className="text-xl font-semibold">{totalTimeFormatted}</div>
-              <div className="text-sm text-muted-foreground">Total Time</div>
-            </div>
-
-            {/* Answered Questions */}
-            <div className="text-center p-4 bg-card rounded-lg border">
-              <BarChart3 className="h-6 w-6 text-primary mx-auto mb-2" />
-              <div className="text-xl font-semibold">{questionsCount}</div>
-              <div className="text-sm text-muted-foreground">Questions</div>
-            </div>
-
-            {/* Improvement vs. previous session (points, not percent) */}
-            <div className="text-center p-4 bg-card rounded-lg border">
-              {improvement != null && improvement < 0 ? (
-                <TrendingDown className="h-6 w-6 text-primary mx-auto mb-2" />
-              ) : (
-                <TrendingUp className="h-6 w-6 text-primary mx-auto mb-2" />
-              )}
-              <div className="text-xl font-semibold">
-                {improvement == null ? '—' : `${improvement >= 0 ? '+' : ''}${improvement} pts`}
-              </div>
-              <div className="text-sm text-muted-foreground">
-                {improvement === null ? 'First scored session' : 'vs. last session'}
-              </div>
-            </div>
-          </div>
-          </CardContent>
-        </Card>
-
-        {/* Loading state while transcribing/analyzing */}
-        {results.length === 0 ? (
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Clock className="h-4 w-4" />
-                  <span>{isReadonly ? 'Loading saved session…' : 'Transcribing and analyzing your responses…'}</span>
-                </div>
-                {!isReadonly && <span className="text-sm text-muted-foreground">{progressPercent}%</span>}
-              </div>
-              {!isReadonly && <Progress value={progressPercent} className="h-2" />}
-              {loadingIndex !== null && (
-                <p className="text-sm text-muted-foreground mt-2 text-center">
-                  Processing response {loadingIndex + 1} of {recordings.length}
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        ) : (
-          // Question-by-question results
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {orderedResults.map((item) => (
-             <Card key={item.originalIndex ?? item.question} className="overflow-hidden">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">
-                     Question {(item.originalIndex ?? 0) + 1}
-                    </CardTitle>
-                    {(() => {
-  const fb = normalizeFeedback(item.feedback);
-  if (item.skipped) return <Badge variant="destructive">Skipped</Badge>;
-  if (item.noSpeech) return <Badge variant="secondary">No answer detected</Badge>;
-  if (!fb) return <Badge variant="secondary">Not scored</Badge>;
-  if (fb.legacyHtml) return <Badge variant="secondary">Feedback</Badge>;
-  const s = Math.round(fb.overallScore || 0);
-  const variant = s >= 80 ? 'default' : s >= 70 ? 'secondary' : 'destructive';
-  return <Badge variant={variant}>{s}%</Badge>;
-})()}
-                  </div>
-                  <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{item.question}</p>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Media */}
-                  {!isReadonly && !item.skipped && (
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium flex items-center gap-2">
-                        <VideoIcon className="h-4 w-4" /> Your Response
-                      </p>
-                      {item.videoUrl ? (
-                        <div className="relative w-full rounded-lg border bg-black/5" style={{ aspectRatio: '16 / 9' }}>
-                          <video
-                            controls
-                            className="absolute inset-0 h-full w-full rounded object-cover"
-                            src={item.videoUrl}
-                            preload="metadata"
-                            onLoadedMetadata={(e) => {
-                              const v = e.currentTarget;
-                              if (!isFinite(v.duration) || isNaN(v.duration)) {
-                                v.currentTime = Number.MAX_SAFE_INTEGER;
-                                const snapBack = () => { v.removeEventListener('timeupdate', snapBack); v.currentTime = 0; };
-                                v.addEventListener('timeupdate', snapBack);
-                              }
-                            }}
-                          />
-                        </div>
-                      ) : (
-                        <audio controls src={item.audioUrl} className="w-full rounded" />
-                      )}
-                    </div>
-                  )}
-
-                  {/* Tip toggle */}
-                  {item.tip && (
-                    <div className="bg-card/50 border rounded-lg p-3">
-                      <button
-                        onClick={() =>
-                          setExpandedTips((prev) => ({
-                            ...prev,
-                            [item.originalIndex]: !prev[item.originalIndex],
-                          }))
-                        }
-                        className="text-sm text-primary underline"
-                      >
-                        {expandedTips[item.originalIndex] ? 'Hide Tip' : 'Show Tip'}
-                      </button>
-                      {expandedTips[item.originalIndex] && (
-                        <p className="mt-2 text-sm italic text-muted-foreground">{item.tip}</p>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Couldn't score this answer */}
-                  {!item.skipped && (item.noSpeech || item.error) && (
-                    <div className="flex gap-3 rounded-lg border bg-muted/40 p-3 text-sm">
-                      {item.noSpeech
-                        ? <MicOff className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
-                        : <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />}
-                      <p className="text-muted-foreground">
-                        {item.noSpeech
-                          ? 'We couldn’t hear an answer in this recording. Check that your microphone is working and try this question again in your next session.'
-                          : 'Something went wrong while analyzing this answer, so it wasn’t scored. Your other answers weren’t affected.'}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Transcript & Feedback */}
-                  {!item.skipped && !item.noSpeech && !item.error && (
-                    <div className="space-y-3">
-                      <div className="rounded-lg border bg-gray-50 p-3">
-                        <p className="font-medium text-sm flex items-center gap-2 mb-1">
-                          <FileText className="h-4 w-4" /> Transcript
-                        </p>
-                        <p className="text-sm whitespace-pre-wrap text-foreground/90">{item.transcript}</p>
-                        {!!item.transcript && (
-                          <div className="mt-2">
-                            <Button variant="outline" size="sm" onClick={() => copyTranscript(item.transcript)}>
-                              <CopyIcon className="h-4 w-4 mr-2" /> Copy transcript
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-
-                      {(() => {
-  const fb = normalizeFeedback(item.feedback);
-  if (!fb) return null;
-
-  if (fb.legacyHtml) {
-    return (
-      <div className="rounded-lg border bg-yellow-50 p-3">
-        <p className="font-medium text-sm mb-1">Feedback</p>
-        <div className="text-sm text-foreground/90 whitespace-pre-wrap"
-          dangerouslySetInnerHTML={{ __html: fb.legacyHtml }}
-        />
-      </div>
-    );
-  }
-
-  const sections = [
-    ['Overall Impression', fb.sectionScores?.overallImpression],
-    ['Clarity & Structure', fb.sectionScores?.clarityStructure],
-    ['Content', fb.sectionScores?.content],
-  ];
-
-  return (
-    <div className="space-y-3">
-      <div className="rounded-lg border bg-card p-3">
-        <p className="font-medium text-sm mb-2">Section Scores</p>
-        {sections.map(([label, val]) => (
-          <div key={label} className="mb-2">
-            <div className="flex justify-between text-xs mb-1">
-              <span className="text-muted-foreground">{label}</span>
-              <span className="text-foreground">{Math.round(val ?? 0)}%</span>
-            </div>
-            <Progress value={Math.round(val ?? 0)} className="h-2" />
-          </div>
-        ))}
-      </div>
-
-      <div className="rounded-lg border bg-yellow-50 p-3">
-        <p className="font-medium text-sm mb-1">Feedback Summary</p>
-        <p className="text-sm text-foreground/90 whitespace-pre-wrap">{fb.summary}</p>
-        {Array.isArray(fb.suggestions) && fb.suggestions.length > 0 && (
-          <ul className="mt-2 list-disc list-inside text-sm text-foreground/90">
-            {fb.suggestions.map((s, i) => <li key={i}>{s}</li>)}
-          </ul>
         )}
-      </div>
-    </div>
-  );
-})()}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+        {isReadonly && results.length === 0 && (
+          <p className="mt-6 text-sm text-muted-foreground">Loading saved session…</p>
+        )}
+
+        {/* One answer per row, feedback first */}
+        {results.length > 0 && (
+          <div className="mt-6 space-y-4">
+            {orderedResults.map((item) => (
+              <AnswerCard
+                key={item.originalIndex ?? item.question}
+                item={item}
+                isReadonly={isReadonly}
+                onCopyTranscript={copyTranscript}
+              />
             ))}
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+// Badge in an answer's header: its score, or why it has none
+function AnswerStatus({ item, feedback }) {
+  if (item.noSpeech) return <Badge variant="secondary">No answer detected</Badge>;
+  if (!feedback) return <Badge variant="secondary">Not scored</Badge>;
+  if (feedback.legacyHtml) return <Badge variant="secondary">Feedback</Badge>;
+  return <ScoreBadge score={feedback.overallScore} />;
+}
+
+// Plays back a recording from this session (recordings aren't saved, so only live sessions have them)
+function RecordingPlayer({ item }) {
+  if (!item.videoUrl) {
+    return <audio controls src={item.audioUrl} className="w-full" />;
+  }
+  return (
+    <div className="relative w-full overflow-hidden rounded-lg border bg-black/5" style={{ aspectRatio: '16 / 9' }}>
+      <video
+        controls
+        className="absolute inset-0 h-full w-full object-cover"
+        src={item.videoUrl}
+        preload="metadata"
+        onLoadedMetadata={(e) => {
+          // Recorded webm files report no duration until seeked to the end once
+          const v = e.currentTarget;
+          if (!isFinite(v.duration) || isNaN(v.duration)) {
+            v.currentTime = Number.MAX_SAFE_INTEGER;
+            const snapBack = () => { v.removeEventListener('timeupdate', snapBack); v.currentTime = 0; };
+            v.addEventListener('timeupdate', snapBack);
+          }
+        }}
+      />
+    </div>
+  );
+}
+
+// Collapsed checklist under the player, for students who want guidance reviewing themselves
+function SelfReviewGuide({ kind }) {
+  const [open, setOpen] = useState(false);
+  const guide = SELF_REVIEW[kind];
+  return (
+    <div className="mt-2">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+      >
+        {guide.title}
+        <ChevronDown className={cn('h-4 w-4 transition-transform', open && 'rotate-180')} />
+      </button>
+      {open && (
+        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-gray-700">
+          {guide.items.map(([label, question]) => (
+            <li key={label}><span className="font-medium text-gray-900">{label}:</span> {question}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// One answer: the question, the recording beside its feedback (live sessions), then transcript / tip toggles
+function AnswerCard({ item, isReadonly, onCopyTranscript }) {
+  const [panel, setPanel] = useState(null); // 'transcript' | 'tip' | null
+  const feedback = normalizeFeedback(item.feedback);
+  // Recordings only exist right after a session; saved sessions never have them
+  const hasVideo = !isReadonly && !!item.videoUrl;
+  const hasAudioOnly = !isReadonly && !item.videoUrl && !!item.audioUrl;
+
+  const questionHeader = (
+    <div className="min-w-0">
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        Question {(item.originalIndex ?? 0) + 1}
+      </p>
+      <h2 className="mt-1 text-base font-semibold text-gray-900">{item.question}</h2>
+    </div>
+  );
+
+  if (item.skipped) {
+    return (
+      <Card className="flex items-start justify-between gap-4 p-5 sm:p-6">
+        {questionHeader}
+        <div className="shrink-0"><Badge variant="secondary">Skipped</Badge></div>
+      </Card>
+    );
+  }
+
+  const toggles = [
+    item.transcript && { key: 'transcript', label: 'Transcript', Icon: FileText },
+    item.tip && { key: 'tip', label: 'Interview tip', Icon: Lightbulb },
+  ].filter(Boolean);
+
+  const feedbackBlock = item.noSpeech || item.error ? (
+    <div className="flex gap-3 rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
+      {item.noSpeech
+        ? <MicOff className="mt-0.5 h-4 w-4 shrink-0" />
+        : <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />}
+      <p>
+        {item.noSpeech
+          ? 'We couldn’t hear an answer in this recording. Check that your microphone is working and try this question again in your next session.'
+          : 'Something went wrong while analyzing this answer, so it wasn’t scored. Your other answers weren’t affected.'}
+      </p>
+    </div>
+  ) : feedback?.legacyHtml ? (
+    <div
+      className="whitespace-pre-wrap text-sm text-gray-700"
+      dangerouslySetInnerHTML={{ __html: feedback.legacyHtml }}
+    />
+  ) : feedback ? (
+    <FeedbackDetails feedback={feedback} />
+  ) : null;
+
+  return (
+    <Card className="p-5 sm:p-6">
+      <div className="flex items-start justify-between gap-4">
+        {questionHeader}
+        {/* shrink-0 keeps badges on one line; the question wraps instead */}
+        <div className="shrink-0"><AnswerStatus item={item} feedback={feedback} /></div>
+      </div>
+
+      {hasVideo ? (
+        // Watching yourself back is the main event: video on the left, feedback beside it
+        <div className="mt-4 grid gap-6 lg:grid-cols-5">
+          <div className="lg:col-span-3">
+            <RecordingPlayer item={item} />
+            <SelfReviewGuide kind="video" />
+          </div>
+          <div className="lg:col-span-2">{feedbackBlock}</div>
+        </div>
+      ) : (
+        <div className="mt-4 space-y-4">
+          {hasAudioOnly && (
+            <div>
+              <RecordingPlayer item={item} />
+              <SelfReviewGuide kind="audio" />
+            </div>
+          )}
+          {feedbackBlock}
+        </div>
+      )}
+
+      {toggles.length > 0 && (
+        <div className="mt-5 border-t pt-3">
+          <div className="-mx-2 flex flex-wrap gap-1">
+            {toggles.map(({ key, label, Icon }) => (
+              <Button
+                key={key}
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-expanded={panel === key}
+                onClick={() => setPanel(panel === key ? null : key)}
+                className={cn('text-muted-foreground', panel === key && 'bg-muted text-foreground')}
+              >
+                <Icon className="h-4 w-4" />
+                {label}
+                <ChevronDown className={cn('h-4 w-4 transition-transform', panel === key && 'rotate-180')} />
+              </Button>
+            ))}
+          </div>
+          {panel === 'transcript' && (
+            <div className="mt-3 rounded-lg bg-muted/50 p-3 text-sm text-gray-700">
+              <p className="whitespace-pre-wrap">{item.transcript}</p>
+              <Button variant="outline" size="sm" className="mt-3 bg-white" onClick={() => onCopyTranscript(item.transcript)}>
+                <CopyIcon className="h-4 w-4" /> Copy transcript
+              </Button>
+            </div>
+          )}
+          {panel === 'tip' && (
+            <p className="mt-3 rounded-lg bg-teal-50 p-3 text-sm text-teal-900">{item.tip}</p>
+          )}
+        </div>
+      )}
+    </Card>
   );
 }

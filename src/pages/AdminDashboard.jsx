@@ -108,7 +108,10 @@ function AdminDashboard() {
     <div className="max-w-5xl mx-auto p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-        <Link to="/admin/questions" className={buttonVariants()}>Manage Questions</Link>
+        <div className="flex gap-2">
+          <Link to="/admin/feedback-lab" className={buttonVariants({ variant: 'outline' })}>Feedback lab</Link>
+          <Link to="/admin/questions" className={buttonVariants()}>Manage Questions</Link>
+        </div>
       </div>
 
       {!loading && (
