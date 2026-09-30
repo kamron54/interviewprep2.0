@@ -57,7 +57,7 @@ export default function Pricing() {
       name: month.name,
       price: formatPrice(month.amount),
       priceNote: 'one-time',
-      desc: '30 days of full access, for an interview coming up soon.',
+      desc: '30 days of access, for an interview coming up soon.',
       features: [...paidFeatures, 'Access for 30 days'],
       plan: month,
     },
