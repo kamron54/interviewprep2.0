@@ -7,7 +7,7 @@ import ProgramIcon from '../components/ProgramIcon';
 import { CtaSection, FeaturesSection, FounderSection, HowItWorksSection, SectionHeading, StatsRow } from '../components/MarketingSections';
 import { comingSoonPrograms, livePrograms } from '../professions/index.js';
 import { useAccount } from '../lib/account';
-import { FREE_TRIAL_SESSIONS, PREMIUM_PRICE } from '../lib/pricing';
+import { FREE_TRIAL_SESSIONS, PLANS, formatPrice } from '../lib/pricing';
 import usePageTitle from '../lib/usePageTitle';
 
 // The homepage: a neutral front door that sends each student to their program's page
@@ -111,7 +111,7 @@ export default function ProgramHub() {
       <FounderSection />
       <CtaSection
         title="Try it free"
-        body={`Your first ${FREE_TRIAL_SESSIONS} practice sessions are free. After that, Premium is a one-time ${PREMIUM_PRICE} for 12 months, with no subscription.`}
+        body={`Your first ${FREE_TRIAL_SESSIONS} practice sessions are free. After that, get 12 months of access for ${formatPrice(PLANS.year.amount)}, one-time, with no subscription.`}
         to="/pricing"
         label="See pricing"
       />
