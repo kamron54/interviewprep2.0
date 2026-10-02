@@ -1,22 +1,24 @@
 import { useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
-import { ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import PageLoader from '../components/PageLoader';
+import AdminLayout from '../components/AdminLayout';
 import FormMessage from '../components/FormMessage';
 import FeedbackDetails, { ScoreBadge } from '../components/FeedbackDetails';
 import { getFeedback } from '../ai/aiService';
-import { useAccount } from '../lib/account';
 import { livePrograms } from '../professions/index.js';
-import usePageTitle from '../lib/usePageTitle';
+
+export default function AdminFeedbackLab() {
+  return (
+    <AdminLayout title="Feedback lab">
+      <FeedbackLab />
+    </AdminLayout>
+  );
+}
 
 // Admin tool: score a pasted answer exactly like a real session would (same API, same display),
 // to tune the feedback instructions in api/feedback.js without recording answers.
-export default function AdminFeedbackLab() {
-  usePageTitle('Feedback lab');
-  const { profile, profileLoaded } = useAccount();
+function FeedbackLab() {
   const programs = livePrograms();
   const [tag, setTag] = useState(programs[0].tag);
   const [question, setQuestion] = useState('');
@@ -24,9 +26,6 @@ export default function AdminFeedbackLab() {
   const [feedback, setFeedback] = useState(null);
   const [error, setError] = useState('');
   const [scoring, setScoring] = useState(false);
-
-  if (!profileLoaded) return <PageLoader />;
-  if (profile?.role !== 'admin') return <Navigate to="/" replace />;
 
   const handleScore = async (e) => {
     e.preventDefault();
@@ -43,16 +42,10 @@ export default function AdminFeedbackLab() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto p-6 space-y-6">
-      <div>
-        <Link to="/admin" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ChevronLeft className="h-4 w-4" /> Admin Dashboard
-        </Link>
-        <h1 className="mt-2 text-2xl font-bold">Feedback lab</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Paste an answer to see the exact score and feedback a student would get.
-        </p>
-      </div>
+    <>
+      <p className="text-sm text-muted-foreground">
+        Paste an answer to see the exact score and feedback a student would get.
+      </p>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="p-6">
@@ -111,6 +104,6 @@ export default function AdminFeedbackLab() {
           )}
         </Card>
       </div>
-    </div>
+    </>
   );
 }
