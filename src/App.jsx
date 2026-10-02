@@ -12,6 +12,7 @@ import InterviewSetup from './pages/InterviewSetup';
 import InterviewSession from './pages/InterviewSession';
 import SessionSummary from './pages/SessionSummary';
 import AdminDashboard from './pages/AdminDashboard';
+import AdminUsers from './pages/AdminUsers';
 import AdminQuestionManager from './pages/AdminQuestionManager';
 import AdminFeedbackLab from './pages/AdminFeedbackLab';
 import Pricing from './pages/Pricing';
@@ -76,6 +77,7 @@ function AppRoutes() {
 
         {/* Admin */}
         <Route path="admin"           element={<Protected><AdminDashboard /></Protected>} />
+        <Route path="admin/users"     element={<Protected><AdminUsers /></Protected>} />
         <Route path="admin/questions" element={<Protected><AdminQuestionManager /></Protected>} />
         <Route path="admin/feedback-lab" element={<Protected><AdminFeedbackLab /></Protected>} />
 

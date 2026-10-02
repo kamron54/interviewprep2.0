@@ -8,7 +8,7 @@ import ProgramIcon from '../components/ProgramIcon';
 import { useAccount } from '../lib/account';
 import { allPrograms } from '../professions/index.js';
 import { buttonVariants } from '@/components/ui/button';
-import { ChevronDown, Menu, X } from 'lucide-react';
+import { ChevronDown, Menu, ShieldCheck, X } from 'lucide-react';
 
 // Screens where the header would get in the way of an interview
 const FOCUS_SECTIONS = ['setup', 'session', 'summary'];
@@ -40,7 +40,9 @@ function ProgramsMenu() {
 }
 
 export default function Header() {
-  const { user } = useAccount();
+  const { user, profile } = useAccount();
+  // Only decides whether the link shows; the admin pages check the role themselves
+  const isAdmin = profile?.role === 'admin';
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -73,6 +75,11 @@ export default function Header() {
         <div className="hidden md:flex items-center gap-2">
           {user ? (
             <>
+              {isAdmin && (
+                <Link to="/admin" className={buttonVariants({ variant: 'ghost' })}>
+                  <ShieldCheck className="h-4 w-4" /> Admin
+                </Link>
+              )}
               <Link to="/dashboard" className={buttonVariants({ variant: 'outline' })}>Dashboard</Link>
               <button onClick={handleLogout} className={buttonVariants({ variant: 'ghost' })}>Log out</button>
             </>
@@ -113,6 +120,11 @@ export default function Header() {
           <div className="mt-2 flex flex-col gap-2 border-t pt-3">
             {user ? (
               <>
+                {isAdmin && (
+                  <Link to="/admin" className={buttonVariants({ variant: 'outline' })}>
+                    <ShieldCheck className="h-4 w-4" /> Admin
+                  </Link>
+                )}
                 <Link to="/dashboard" className={buttonVariants({ variant: 'outline' })}>Dashboard</Link>
                 <button onClick={handleLogout} className={buttonVariants({ variant: 'ghost' })}>Log out</button>
               </>

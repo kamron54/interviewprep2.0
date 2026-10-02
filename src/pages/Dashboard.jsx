@@ -16,38 +16,11 @@ import PageLoader from '../components/PageLoader';
 import ProgramIcon from '../components/ProgramIcon';
 import { useAccount } from '../lib/account';
 import { rememberProgram } from '../lib/auth';
+import { getAccessState } from '../lib/access';
 import { FREE_TRIAL_SESSIONS } from '../lib/pricing';
 import { getProgram, livePrograms } from '../professions/index.js';
 import usePageTitle from '../lib/usePageTitle';
 import { Trophy, BookOpen, Target, Play, Star, AlertTriangle, Crown, Gift, BarChart3, MailCheck } from "lucide-react";
-
-// ---- helpers (no hooks) -------------------------------------------------
-function toDate(val) {
-  if (!val) return null;
-  // Support Firestore Timestamp {seconds, nanoseconds}, ISO string, or Date
-  if (typeof val === 'object' && val.seconds) return new Date(val.seconds * 1000);
-  if (val instanceof Date) return val;
-  const d = new Date(val);
-  return isNaN(d.getTime()) ? null : d;
-}
-function addDays(date, days) {
-  const d = new Date(date.getTime());
-  d.setDate(d.getDate() + days);
-  return d;
-}
-function computeTimeLeft(end) {
-  if (!end) return null;
-  const msLeft = end.getTime() - Date.now();
-  if (msLeft <= 0) return '0h 0m';
-  const hours = Math.floor(msLeft / (1000 * 60 * 60));
-  const minutes = Math.floor((msLeft / (1000 * 60)) % 60);
-  return `${hours}h ${minutes}m`;
-}
-function daysLeft(end) {
-  if (!end) return 0;
-  const diff = end.getTime() - Date.now();
-  return Math.max(0, Math.ceil(diff / 86400000));
-}
 
 export default function Dashboard() {
   usePageTitle('Dashboard');
@@ -156,30 +129,14 @@ export default function Dashboard() {
     return <PageLoader label="Loading your dashboard…" />;
   }
 
-  // ---- derive trial + subscription windows (reads only) ------------------
-  const now = new Date();
-  const trialEnd = toDate(userData.trialExpiresAt);
-  const isTrialActive = trialEnd ? now < trialEnd : false;
-
-  const hasPaid = !!userData.hasPaid;
-  const paidAt = toDate(userData.paidAt);
-  const subscriptionEndsAt = toDate(userData.subscriptionEndsAt) || (paidAt ? addDays(paidAt, 365) : null);
-
-  // ---- compute userState (4 states) --------------------------------------
-  // free_trial_active | free_trial_expired | paid_active | paid_cancelled
-  let userState = 'free_trial_expired';
-  if (hasPaid && subscriptionEndsAt) {
-    userState = now <= subscriptionEndsAt ? 'paid_active' : 'paid_cancelled';
-  } else if (isTrialActive) {
-    userState = 'free_trial_active';
-  }
-
-  const trialDaysRemaining = trialEnd ? daysLeft(trialEnd) : 0;
+  // ---- trial / paid state (same rules as the admin users table) ----------
+  // userState: free_trial_active | free_trial_expired | paid_active | paid_cancelled
+  const {
+    userState, trialDaysRemaining, paidDaysRemaining, sessionsCompleted, trialSessionsLeft, locked,
+  } = getAccessState(userData);
   const trialDaysLabel = `${trialDaysRemaining} day${trialDaysRemaining === 1 ? '' : 's'}`;
-  const paidDaysRemaining = subscriptionEndsAt ? daysLeft(subscriptionEndsAt) : null;
 
   // ---- KPIs ---------------------------------------------------
-  const sessionsCompleted  = Number.isFinite(userData?.sessionsCompleted) ? userData.sessionsCompleted : 0;
   const questionsPracticed = Number.isFinite(userData?.usageCount) ? userData.usageCount
                           : Number.isFinite(userData?.questionsPracticed) ? userData.questionsPracticed
                           : 0;
@@ -192,10 +149,6 @@ export default function Dashboard() {
     { label: 'Questions Practiced', value: questionsPracticed, Icon: BookOpen, color: 'text-teal-600' },
     { label: 'Average Score',       value: averageScore == null ? '—' : `${averageScore}%`, Icon: Target, color: 'text-blue-600' },
   ];
-
-  // Free trial session limit
-  const trialSessionsLeft = Math.max(0, FREE_TRIAL_SESSIONS - sessionsCompleted);
-  const locked = !(userState === 'paid_active' || userState === 'free_trial_active' && trialSessionsLeft > 0);
 
   if (!isVerified) {
     return (
@@ -404,7 +357,7 @@ export default function Dashboard() {
                 <div className="flex items-center space-x-2">
                   <Star className="h-5 w-5 text-warning" />
                   <span className="font-medium text-foreground">
-                    You’ve used your 2 free sessions. Upgrade to continue.
+                    You’ve used your {FREE_TRIAL_SESSIONS} free sessions. Upgrade to continue.
                   </span>
                 </div>
                 <Button
