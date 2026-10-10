@@ -1,4 +1,6 @@
-import { GoogleAuthProvider, deleteUser, getAdditionalUserInfo, signInWithPopup, signOut } from 'firebase/auth';
+import {
+  GoogleAuthProvider, deleteUser, getAdditionalUserInfo, sendEmailVerification, signInWithPopup, signOut,
+} from 'firebase/auth';
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from '../../firebase';
 import { getProgram, DEFAULT_PROGRAM } from '../professions/index.js';
@@ -37,6 +39,21 @@ export function createProfile(user, { name, track }) {
     // Google has already verified its users' emails; email sign-ups verify by link
     emailVerified: user.emailVerified,
   });
+}
+
+// Sends the "confirm your email" message: ours through Resend (api/send-verification.js), or
+// Firebase's built-in one when ours isn't available. Throws auth/too-many-requests when asked too often.
+export async function sendVerificationEmail(user) {
+  let res = null;
+  try {
+    res = await fetch('/api/send-verification', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${await user.getIdToken()}` },
+    });
+  } catch { /* network error: fall back below */ }
+  if (res?.ok) return;
+  if (res?.status === 429) throw Object.assign(new Error('Too many emails'), { code: 'auth/too-many-requests' });
+  await sendEmailVerification(user);
 }
 
 // Another account already uses this Gmail inbox under a different dot pattern

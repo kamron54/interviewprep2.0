@@ -7,6 +7,7 @@ import ProgramHub from './pages/ProgramHub';
 import ProgramLanding from './pages/ProgramLanding';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
+import VerifyEmail from './pages/VerifyEmail';
 import Dashboard from './pages/Dashboard';
 import InterviewSetup from './pages/InterviewSetup';
 import InterviewSession from './pages/InterviewSession';
@@ -68,6 +69,7 @@ function AppRoutes() {
         <Route path="resources/pitfalls" element={<PitfallsGuide />} />
         <Route path="privacy" element={<PrivacyPolicy />} />
         <Route path="terms" element={<TermsOfService />} />
+        <Route path="verify-email" element={<VerifyEmail />} />
 
         {/* Protected */}
         <Route path="dashboard" element={<Protected><Dashboard /></Protected>} />
