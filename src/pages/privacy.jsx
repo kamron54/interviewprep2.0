@@ -52,6 +52,11 @@ export default function PrivacyPolicy() {
           <li>Feature usage (e.g., number of sessions completed, questions practiced).</li>
         </ul>
 
+        <h3>e. Survey Answers</h3>
+        <ul>
+          <li>If you answer our optional survey, we store your answers with your account.</li>
+        </ul>
+
         <h2>2. How We Use Your Information</h2>
         <ul>
           <li>Provide and improve the InterviewPrep platform.</li>
@@ -59,6 +64,10 @@ export default function PrivacyPolicy() {
           <li>Track your practice history and performance over time.</li>
           <li>Manage subscriptions, payments, and free trial eligibility.</li>
           <li>Communicate with you about account issues, updates, or support.</li>
+          <li>
+            Send occasional emails, such as a short survey after your free trial. Every one of these
+            emails has an unsubscribe link.
+          </li>
           <li>Monitor usage to maintain system security and prevent abuse.</li>
         </ul>
 
@@ -67,7 +76,7 @@ export default function PrivacyPolicy() {
         <ul>
           <li>
             <strong>Service Providers</strong> (e.g., Firebase for authentication and storage, Stripe for
-            payments).
+            payments, Resend for sending email).
           </li>
           <li>
             <strong>Legal Authorities</strong> if required by law, regulation, or legal process.

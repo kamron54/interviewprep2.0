@@ -7,13 +7,15 @@ import { cn } from '@/lib/utils';
 import { FaqSection } from '../components/MarketingSections';
 import { startCheckout } from '../lib/checkout';
 import { useAccount } from '../lib/account';
-import { PLANS, FREE_TRIAL_DAYS, FREE_TRIAL_SESSIONS, formatPrice } from '../lib/pricing';
+import { PLANS, FREE_TRIAL_DAYS, FREE_TRIAL_SESSIONS, SURVEY_DISCOUNT, formatPrice } from '../lib/pricing';
 import { livePrograms } from '../professions/index.js';
 import usePageTitle from '../lib/usePageTitle';
 
 export default function Pricing() {
   usePageTitle('Pricing');
-  const { user } = useAccount();
+  const { user, profile } = useAccount();
+  // Answering the survey takes $10 off 12 months at checkout (api/create-checkout-session.js)
+  const surveyDeal = !!profile?.surveyDiscount;
   const [redirecting, setRedirecting] = useState(null); // plan id being sent to checkout
   const liveNames = livePrograms().map((p) => p.name.toLowerCase()).join(' and ');
 
@@ -63,9 +65,11 @@ export default function Pricing() {
     },
     {
       name: year.name,
-      price: formatPrice(year.amount),
+      price: formatPrice(surveyDeal ? year.amount - SURVEY_DISCOUNT : year.amount),
+      wasPrice: surveyDeal ? formatPrice(year.amount) : null,
       priceNote: 'one-time',
       desc: 'Covers your whole application cycle.',
+      dealNote: surveyDeal ? `Includes your $${SURVEY_DISCOUNT} survey thank-you, applied at checkout.` : null,
       features: [...paidFeatures, 'Access for 12 months'],
       plan: year,
       highlight: true,
@@ -106,10 +110,12 @@ export default function Pricing() {
                   )}
                   <h2 className="text-base font-semibold text-gray-900">{t.name}</h2>
                   <div className="mt-3 flex items-baseline gap-1.5">
+                    {t.wasPrice && <span className="text-xl text-gray-400 line-through">{t.wasPrice}</span>}
                     <span className="text-4xl font-semibold tracking-tight text-gray-900">{t.price}</span>
                     <span className="text-sm text-gray-500">{t.priceNote}</span>
                   </div>
                   <p className="mt-2 text-sm text-gray-600">{t.desc}</p>
+                  {t.dealNote && <p className="mt-2 text-sm font-medium text-teal-700">{t.dealNote}</p>}
                   <ul className="mt-6 flex-1 space-y-2.5 text-sm text-gray-700">
                     {t.features.map((f) => (
                       <li key={f} className="flex items-start gap-2">

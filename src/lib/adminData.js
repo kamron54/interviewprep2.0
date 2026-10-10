@@ -55,3 +55,28 @@ export function useAdminWaitlist() {
 
   return entries;
 }
+
+// Survey email status and answers from api/survey-emails.js (admin-only GET). null until loaded.
+export function useAdminSurvey() {
+  const [survey, setSurvey] = useState(null);
+  const [version, setVersion] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = await auth.currentUser.getIdToken();
+        const res = await fetch('/api/survey-emails', { headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        if (!cancelled) setSurvey(data);
+      } catch (err) {
+        console.error('Error fetching survey:', err);
+        if (!cancelled) setSurvey({ error: true });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [version]);
+
+  return { survey, reload: () => setVersion((v) => v + 1) };
+}

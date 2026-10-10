@@ -12,4 +12,9 @@ export const PLANS = {
   year: { id: 'year', name: '12 Months', amount: 49, days: 365, stripePriceId: 'price_1ULGgNHtr4snLcWRLvef42cn' },
 };
 
+// The thank-you for answering the survey (src/pages/Survey.jsx): $10 off 12 months, applied at checkout.
+// SURVEY_COUPON_ID is a Stripe coupon: $10 off, duration "once", limited to the 12 Months product.
+export const SURVEY_DISCOUNT = 10;
+export const SURVEY_COUPON_ID = 'survey-thank-you';
+
 export const formatPrice = (amount) => `$${amount}`;

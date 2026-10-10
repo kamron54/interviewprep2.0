@@ -1,21 +1,12 @@
 import admin, { getUserFromRequest } from '../firebase-admin';
+import { escapeHtml, firstNameOf, sendEmail, siteUrl } from '../email.js';
 
 // Sends the "confirm your email" message ourselves through Resend instead of Firebase's built-in
 // email. Firebase's wording is identical in every app that uses it, so Gmail files it as spam.
 // Until RESEND_API_KEY is set this returns 503, and the site falls back to Firebase's email.
 
-const FROM = 'InterviewPrep <hello@interviewprep.center>';
-const REPLY_TO = 'kam.interviewprep@gmail.com'; // the contact address shown on the site
 const MIN_GAP_MS = 60 * 1000;
 const MAX_PER_DAY = 5;
-
-// Where the link opens: the live site, or this preview while a branch is being tested
-export function siteUrl(env = process.env) {
-  const previewHost = env.VERCEL_ENV === 'preview' && (env.VERCEL_BRANCH_URL || env.VERCEL_URL);
-  return previewHost ? `https://${previewHost}` : 'https://interviewprep.center';
-}
-
-const escapeHtml = (s) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 // Short and plain on purpose: personal-looking mail is less likely to be filtered
 export function verificationEmail({ firstName, link }) {
@@ -73,15 +64,10 @@ export default async function handler(req, res) {
     const link = `${siteUrl()}/verify-email?oobCode=${encodeURIComponent(oobCode)}`;
 
     const profile = (await admin.firestore().collection('users').doc(user.uid).get()).data() || {};
-    const firstName = String(profile.name || '').trim().split(/\s+/)[0];
-
-    const sent = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: FROM, to: [user.email], reply_to: REPLY_TO, ...verificationEmail({ firstName, link }) }),
-    });
-    if (!sent.ok) {
-      console.error('Resend rejected the verification email:', sent.status, await sent.text());
+    try {
+      await sendEmail({ to: user.email, ...verificationEmail({ firstName: firstNameOf(profile.name), link }) });
+    } catch (err) {
+      console.error('Resend rejected the verification email:', err.message);
       return res.status(502).json({ error: 'Could not send the email' });
     }
 
