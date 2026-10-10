@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { sendEmailVerification } from 'firebase/auth';
 import { auth, db } from '../../firebase';
 import { doc, updateDoc, collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { toast } from 'sonner';
@@ -15,7 +14,7 @@ import { cn } from '@/lib/utils';
 import PageLoader from '../components/PageLoader';
 import ProgramIcon from '../components/ProgramIcon';
 import { useAccount } from '../lib/account';
-import { rememberProgram } from '../lib/auth';
+import { rememberProgram, sendVerificationEmail } from '../lib/auth';
 import { getAccessState } from '../lib/access';
 import { FREE_TRIAL_SESSIONS } from '../lib/pricing';
 import { getProgram, livePrograms } from '../professions/index.js';
@@ -100,7 +99,7 @@ export default function Dashboard() {
 
   const handleResendVerification = async () => {
     try {
-      await sendEmailVerification(auth.currentUser);
+      await sendVerificationEmail(auth.currentUser);
       toast.success(`Verification email sent to ${auth.currentUser.email}`);
     } catch (err) {
       console.error('Resend verification failed:', err);

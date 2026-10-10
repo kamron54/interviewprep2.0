@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import AuthLayout from '../components/AuthLayout';
 import FormMessage from '../components/FormMessage';
 import GoogleSignInButton, { OrDivider } from '../components/GoogleSignInButton';
-import { createProfile, friendlyAuthError, rememberedProgram, rememberProgram } from '../lib/auth';
+import { createProfile, friendlyAuthError, rememberedProgram, rememberProgram, sendVerificationEmail } from '../lib/auth';
 import { FREE_TRIAL_SESSIONS } from '../lib/pricing';
 import { getProgram, livePrograms } from '../professions/index.js';
 
@@ -34,7 +34,8 @@ function SignUp() {
       await createProfile(user, { name, track });
       rememberProgram(track);
 
-      await sendEmailVerification(user);
+      // The dashboard can resend it, so a failed email shouldn't stop sign-up
+      await sendVerificationEmail(user).catch((err) => console.warn('Verification email not sent:', err));
 
       navigate('/dashboard', { replace: true });
     } catch (err) {
