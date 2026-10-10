@@ -1,4 +1,4 @@
-import { GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import { GoogleAuthProvider, deleteUser, getAdditionalUserInfo, signInWithPopup, signOut } from 'firebase/auth';
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from '../../firebase';
 import { getProgram, DEFAULT_PROGRAM } from '../professions/index.js';
@@ -39,14 +39,39 @@ export function createProfile(user, { name, track }) {
   });
 }
 
+// Another account already uses this Gmail inbox under a different dot pattern
+// (see api/existing-account.js). Resolves to its address, or null. A failed check never blocks sign-up.
+async function findExistingAccount(user) {
+  if (!/@(gmail|googlemail)\.com$/i.test(user.email || '')) return null;
+  try {
+    const res = await fetch('/api/existing-account', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${await user.getIdToken()}` },
+    });
+    return res.ok ? (await res.json()).existingEmail || null : null;
+  } catch {
+    return null;
+  }
+}
+
 // "Continue with Google" on the log-in and sign-up pages. A first sign-in creates the profile
 // with `track`; returning accounts keep theirs. Resolves to the existing profile, or null when
 // the account is new.
 export async function continueWithGoogle(track) {
-  const { user } = await signInWithPopup(auth, new GoogleAuthProvider());
+  const result = await signInWithPopup(auth, new GoogleAuthProvider());
+  const { user } = result;
   try {
     const snap = await getDoc(doc(db, 'users', user.uid));
     if (snap.exists()) return snap.data();
+
+    // Same inbox, different dots (kamronsafarnejad@ vs kamron.safarnejad@): send them to their
+    // real account instead of starting an empty second one
+    const existingEmail = await findExistingAccount(user);
+    if (existingEmail) {
+      if (getAdditionalUserInfo(result)?.isNewUser) await deleteUser(user).catch(() => {});
+      throw Object.assign(new Error('This Gmail inbox already has an account'), { existingEmail });
+    }
+
     await createProfile(user, { name: user.displayName || '', track });
     rememberProgram(track);
     return null;
@@ -83,5 +108,8 @@ const AUTH_ERROR_MESSAGES = {
 
 // Turns a Firebase Auth error into a message we can show users
 export function friendlyAuthError(err) {
+  if (err?.existingEmail) {
+    return `You already have an account as ${err.existingEmail}. Log in with that email and your password.`;
+  }
   return AUTH_ERROR_MESSAGES[err?.code] || 'Something went wrong. Please try again.';
 }
