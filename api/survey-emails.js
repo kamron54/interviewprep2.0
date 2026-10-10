@@ -20,6 +20,7 @@ export function missingForLive(env = process.env, address = MAILING_ADDRESS) {
     env.SURVEY_EMAILS !== 'live' && 'SURVEY_EMAILS=live in Vercel',
     !address && 'a mailing address in email.js',
     !env.EMAIL_LINK_SECRET && 'EMAIL_LINK_SECRET in Vercel',
+    !env.CRON_SECRET && 'CRON_SECRET in Vercel', // without it the daily job can't prove it's Vercel's
     !env.RESEND_API_KEY && 'RESEND_API_KEY in Vercel',
   ].filter(Boolean);
 }
