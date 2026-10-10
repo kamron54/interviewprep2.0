@@ -7,17 +7,28 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import AuthLayout from '../components/AuthLayout';
 import FormMessage from '../components/FormMessage';
-import { friendlyAuthError } from '../lib/auth';
+import GoogleSignInButton, { OrDivider } from '../components/GoogleSignInButton';
+import { friendlyAuthError, rememberedProgram } from '../lib/auth';
 
 function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [googleError, setGoogleError] = useState('');
   const [notice, setNotice] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const from = location.state?.from;
+
+  // Admins go to the admin area; everyone else back to where they were headed, or the dashboard
+  const goNext = (profile) => {
+    if (profile?.role === 'admin') {
+      navigate('/admin', { replace: true });
+    } else {
+      navigate(from || '/dashboard', { replace: true });
+    }
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -29,17 +40,8 @@ function Login() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      const docRef = doc(db, 'users', user.uid);
-      const docSnap = await getDoc(docRef);
-      const data = docSnap.exists() ? docSnap.data() : {};
-
-      if (data.role === 'admin') {
-        navigate('/admin', { replace: true });
-      } else if (from) {
-        navigate(from, { replace: true }); // go back to wherever they were headed
-      } else {
-        navigate('/dashboard', { replace: true });
-      }
+      const docSnap = await getDoc(doc(db, 'users', user.uid));
+      goNext(docSnap.exists() ? docSnap.data() : null);
     } catch (err) {
       console.error('❌ Login error:', err);
       setError(friendlyAuthError(err));
@@ -72,6 +74,11 @@ function Login() {
       subtitle="Welcome back. Pick up where you left off."
       footer={<>Don’t have an account? <Link to="/signup" className="font-medium text-foreground hover:underline">Sign up free</Link></>}
     >
+      {/* A first-time Google user starts on the program page they last viewed */}
+      <GoogleSignInButton track={rememberedProgram()} onSignedIn={goNext} onError={setGoogleError} disabled={submitting} />
+      {googleError && <div className="mt-4"><FormMessage>{googleError}</FormMessage></div>}
+      <div className="my-5"><OrDivider /></div>
+
       <form onSubmit={handleLogin} className="space-y-4">
         <div className="space-y-1.5">
           <label htmlFor="email" className="text-sm font-medium text-foreground">Email</label>

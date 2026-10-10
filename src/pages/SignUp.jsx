@@ -1,16 +1,13 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import {
-  createUserWithEmailAndPassword,
-  sendEmailVerification,
-} from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from '../../firebase';
+import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
+import { auth } from '../../firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import AuthLayout from '../components/AuthLayout';
 import FormMessage from '../components/FormMessage';
-import { friendlyAuthError, rememberedProgram, rememberProgram } from '../lib/auth';
+import GoogleSignInButton, { OrDivider } from '../components/GoogleSignInButton';
+import { createProfile, friendlyAuthError, rememberedProgram, rememberProgram } from '../lib/auth';
 import { FREE_TRIAL_SESSIONS } from '../lib/pricing';
 import { getProgram, livePrograms } from '../professions/index.js';
 
@@ -22,6 +19,7 @@ function SignUp() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [googleError, setGoogleError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [name, setName] = useState('');
   const navigate = useNavigate();
@@ -32,22 +30,8 @@ function SignUp() {
     setSubmitting(true);
 
     try {
-      const userCred = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCred.user;
-
-      const trialExpiresAt = new Date();
-      trialExpiresAt.setDate(trialExpiresAt.getDate() + 7);
-
-      await setDoc(doc(db, 'users', user.uid), {
-        name: name.trim(),
-        email: user.email,
-        track,
-        createdAt: serverTimestamp(),
-        trialExpiresAt: trialExpiresAt.toISOString(),
-        hasPaid: false,
-        promoCodeUsed: null,
-        emailVerified: false,
-      });
+      const { user } = await createUserWithEmailAndPassword(auth, email, password);
+      await createProfile(user, { name, track });
       rememberProgram(track);
 
       await sendEmailVerification(user);
@@ -58,6 +42,11 @@ function SignUp() {
       setError(friendlyAuthError(err));
       setSubmitting(false);
     }
+  };
+
+  // Google sign-ups land on the dashboard; someone who already had an account is just logged in
+  const handleGoogleSignedIn = (profile) => {
+    navigate(profile?.role === 'admin' ? '/admin' : '/dashboard', { replace: true });
   };
 
   return (
@@ -80,6 +69,11 @@ function SignUp() {
             ))}
           </select>
         </div>
+
+        <GoogleSignInButton track={track} onSignedIn={handleGoogleSignedIn} onError={setGoogleError} disabled={submitting} />
+        {googleError && <FormMessage>{googleError}</FormMessage>}
+        <OrDivider>or sign up with email</OrDivider>
+
         <div className="space-y-1.5">
           <label htmlFor="name" className="text-sm font-medium text-foreground">Name</label>
           <Input

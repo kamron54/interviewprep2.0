@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { FaqSection } from '../components/MarketingSections';
 import { startCheckout } from '../lib/checkout';
 import { useAccount } from '../lib/account';
-import { PLANS, FREE_TRIAL_SESSIONS, formatPrice } from '../lib/pricing';
+import { PLANS, FREE_TRIAL_DAYS, FREE_TRIAL_SESSIONS, formatPrice } from '../lib/pricing';
 import { livePrograms } from '../professions/index.js';
 import usePageTitle from '../lib/usePageTitle';
 
@@ -42,7 +42,7 @@ export default function Pricing() {
     {
       name: 'Free Trial',
       price: '$0',
-      priceNote: '7 days',
+      priceNote: `${FREE_TRIAL_DAYS} days`,
       desc: 'Try the full experience before you commit.',
       features: [
         `${FREE_TRIAL_SESSIONS} full practice sessions`,
