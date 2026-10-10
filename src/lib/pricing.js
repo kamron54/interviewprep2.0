@@ -5,6 +5,7 @@
 // Keep them matching. Stripe prices can't be edited, so to change a price: create a new one-time
 // price on the product in Stripe, then update both `amount` and `stripePriceId` here.
 export const FREE_TRIAL_SESSIONS = 2;
+export const FREE_TRIAL_DAYS = 7;
 
 export const PLANS = {
   month: { id: 'month', name: '1 Month', amount: 39, days: 30, stripePriceId: 'price_1ULGemHtr4snLcWRPNLjta9x' },
