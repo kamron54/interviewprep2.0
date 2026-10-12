@@ -1,6 +1,6 @@
 import Stripe from 'stripe';
-import { getUserFromRequest } from '../firebase-admin';
-import { PLANS } from '../src/lib/pricing.js';
+import admin, { getUserFromRequest } from '../firebase-admin';
+import { PLANS, SURVEY_COUPON_ID } from '../src/lib/pricing.js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -24,7 +24,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Checkout isn’t set up for this plan yet' });
     }
 
-    const session = await stripe.checkout.sessions.create({
+    const createSession = (withSurveyDiscount) => stripe.checkout.sessions.create({
       mode: 'payment',
       payment_method_types: ['card'],
       line_items: [
@@ -39,8 +39,23 @@ export default async function handler(req, res) {
         firebaseUid: user.uid,
         plan: plan.id, // the webhook turns this into days of access
       },
-      allow_promotion_codes: true
+      // Stripe takes one or the other: the survey thank-you, or a promo code field
+      ...(withSurveyDiscount ? { discounts: [{ coupon: SURVEY_COUPON_ID }] } : { allow_promotion_codes: true }),
     });
+
+    // Answering the survey (api/survey.js) takes $10 off 12 months, applied here instead of by a code
+    const answeredSurvey = plan.id === 'year'
+      && (await admin.firestore().collection('surveyResponses').doc(user.uid).get()).exists;
+
+    let session;
+    try {
+      session = await createSession(answeredSurvey);
+    } catch (err) {
+      // If the coupon is missing in Stripe, still let them buy (at full price) rather than fail
+      if (!answeredSurvey || err.code !== 'resource_missing') throw err;
+      console.error(`❌ Stripe coupon "${SURVEY_COUPON_ID}" not found; charging full price`);
+      session = await createSession(false);
+    }
 
     return res.status(200).json({ url: session.url });
   } catch (err) {

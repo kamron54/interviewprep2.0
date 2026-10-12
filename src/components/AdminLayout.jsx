@@ -9,6 +9,7 @@ const TABS = [
   { to: '/admin/users', label: 'Users' },
   { to: '/admin/questions', label: 'Questions' },
   { to: '/admin/feedback-lab', label: 'Feedback lab' },
+  { to: '/admin/survey', label: 'Survey' },
 ];
 
 // Shell for every admin page: the one admin gate, the tabs, and a consistent width.

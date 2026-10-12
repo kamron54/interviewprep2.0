@@ -8,12 +8,14 @@ import ProgramLanding from './pages/ProgramLanding';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
 import VerifyEmail from './pages/VerifyEmail';
+import Survey from './pages/Survey';
 import Dashboard from './pages/Dashboard';
 import InterviewSetup from './pages/InterviewSetup';
 import InterviewSession from './pages/InterviewSession';
 import SessionSummary from './pages/SessionSummary';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminUsers from './pages/AdminUsers';
+import AdminSurvey from './pages/AdminSurvey';
 import AdminQuestionManager from './pages/AdminQuestionManager';
 import AdminFeedbackLab from './pages/AdminFeedbackLab';
 import Pricing from './pages/Pricing';
@@ -70,6 +72,7 @@ function AppRoutes() {
         <Route path="privacy" element={<PrivacyPolicy />} />
         <Route path="terms" element={<TermsOfService />} />
         <Route path="verify-email" element={<VerifyEmail />} />
+        <Route path="survey" element={<Survey />} />
 
         {/* Protected */}
         <Route path="dashboard" element={<Protected><Dashboard /></Protected>} />
@@ -82,6 +85,7 @@ function AppRoutes() {
         <Route path="admin/users"     element={<Protected><AdminUsers /></Protected>} />
         <Route path="admin/questions" element={<Protected><AdminQuestionManager /></Protected>} />
         <Route path="admin/feedback-lab" element={<Protected><AdminFeedbackLab /></Protected>} />
+        <Route path="admin/survey"    element={<Protected><AdminSurvey /></Protected>} />
 
         {/* Program pages (/dental, /medical, …); unknown slugs go home */}
         <Route path=":program" element={<ProgramLanding />} />

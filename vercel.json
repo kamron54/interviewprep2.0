@@ -11,8 +11,12 @@
       "config": { "distDir": "dist" }
     }
   ],
+  "crons": [
+    { "path": "/api/survey-emails", "schedule": "0 16 * * *" }
+  ],
   "routes": [
     { "handle": "filesystem" },
+    { "src": "/api/unsubscribe/([^/]+)", "dest": "/api/unsubscribe.js?t=$1" },
     { "src": "/api/(.*)", "dest": "/api/$1.js" },
     { "src": "/__/auth/(.*)", "dest": "https://interview-prep-b2dd4.firebaseapp.com/__/auth/$1" },
     { "src": "/(.*)",       "dest": "/index.html" }
