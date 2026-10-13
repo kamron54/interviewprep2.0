@@ -3,10 +3,12 @@ import { BadgeCheck, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 import AdminLayout from '../components/AdminLayout';
 import TestAccountsToggle, { isTestAccount, useHideTestAccounts } from '../components/TestAccountsToggle';
 import { useAdminUsers } from '../lib/adminData';
 import { getAccessState, toDate } from '../lib/access';
+import { describeSession } from '../lib/sessionOutcome';
 import { PLANS } from '../lib/pricing';
 import { getProgram } from '../professions/index.js';
 
@@ -37,6 +39,20 @@ function accessLabel(user) {
 }
 
 const joinedAt = (user) => toDate(user.createdAt)?.getTime() ?? 0;
+const shortDate = (date) => date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+
+// The latest session's outcome, so sessions without a score explain themselves
+function LastSession({ session }) {
+  const outcome = describeSession(session);
+  if (!outcome) return <span className="text-muted-foreground">—</span>;
+  const at = toDate(session.at);
+  return (
+    <span className={cn(outcome.problem ? 'text-amber-700' : 'text-gray-700')}>
+      {at && <span className="text-muted-foreground">{shortDate(at)} · </span>}
+      {outcome.text}
+    </span>
+  );
+}
 
 function UsersTable() {
   const { users, loading } = useAdminUsers();
@@ -81,6 +97,7 @@ function UsersTable() {
               <th className="px-4 py-3 text-right font-medium">Sessions</th>
               <th className="px-4 py-3 text-right font-medium">Answers</th>
               <th className="px-4 py-3 text-right font-medium">Avg score</th>
+              <th className="px-4 py-3 font-medium">Last session</th>
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -106,11 +123,18 @@ function UsersTable() {
                   <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                     {joined ? joined.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                   </td>
-                  <td className="px-4 py-3 text-right">{u.sessionsCompleted ?? 0}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-right">
+                    {u.sessionsCompleted ?? 0}
+                    {/* Finished sessions where no answer got a score (see Last session for why) */}
+                    {u.unscoredSessions > 0 && (
+                      <div className="text-xs text-muted-foreground">+{u.unscoredSessions} not scored</div>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-right">{u.usageCount ?? 0}</td>
                   <td className="px-4 py-3 text-right">
                     {Number.isFinite(u.rollingAverageScore) ? `${Math.round(u.rollingAverageScore)}%` : '—'}
                   </td>
+                  <td className="px-4 py-3"><LastSession session={u.lastSession} /></td>
                 </tr>
               );
             })}
