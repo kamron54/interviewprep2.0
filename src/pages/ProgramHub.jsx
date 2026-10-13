@@ -1,117 +1,70 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import SampleFeedbackCard from '../components/SampleFeedbackCard';
-import ProgramIcon from '../components/ProgramIcon';
-import { CtaSection, FeaturesSection, FounderSection, HowItWorksSection, SectionHeading, StatsRow } from '../components/MarketingSections';
-import { comingSoonPrograms, livePrograms } from '../professions/index.js';
+import {
+  COMMON_FAQS, CtaSection, FaqSection, FounderLetter, HandNote, HeroClip, HowItWorksLine,
+  ProgramBlocks, ProgramPills, SectionHeading, StatsRow, StudentQuotes,
+} from '../components/MarketingSections';
+import { livePrograms } from '../professions/index.js';
 import { useAccount } from '../lib/account';
 import { FREE_TRIAL_SESSIONS, PLANS, formatPrice } from '../lib/pricing';
 import usePageTitle from '../lib/usePageTitle';
 
-// The homepage: a neutral front door that sends each student to their program's page
+// The homepage: Kamron answering on camera, the programs (bootcamp.com-style blocks), real student
+// quotes, and his note
 export default function ProgramHub() {
   usePageTitle();
   const { user } = useAccount();
-  const live = livePrograms();
-  const soon = comingSoonPrograms();
-  const liveNames = live.map((p) => p.name.toLowerCase()).join(' and ');
+  // Each program block shows that program's first quote; the rest get their own section
+  const moreQuotes = livePrograms().flatMap((p) => (p.landing.quotes || []).slice(1));
+  const start = user ? { to: '/dashboard', label: 'Go to your dashboard' } : { to: '/signup', label: 'Start practicing free' };
 
   return (
     <div>
-      {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 md:py-20 lg:px-8">
-          <div className="grid items-center gap-12 md:grid-cols-2">
-            <div>
-              <h1 className="text-balance text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl">
-                Practice the interview that gets you in.
-              </h1>
-              <p className="mt-4 text-lg text-gray-600">
-                Mock interviews for {liveNames} school applicants, with instant feedback on every answer.
-                More health professions programs are on the way.
-              </p>
-              <div className="mt-8 flex flex-wrap gap-3">
-                {user ? (
-                  <Link to="/dashboard" className={buttonVariants({ size: 'lg' })}>
-                    Go to your dashboard <ArrowRight className="h-4 w-4" />
-                  </Link>
-                ) : (
-                  <a href="#programs" className={buttonVariants({ size: 'lg' })}>
-                    Choose your program <ArrowRight className="h-4 w-4" />
-                  </a>
-                )}
-                <Link to="/pricing" className={buttonVariants({ variant: 'outline', size: 'lg' })}>
-                  See pricing
-                </Link>
-              </div>
-              {!user && (
-                <p className="mt-4 text-sm text-gray-500">{FREE_TRIAL_SESSIONS} free practice sessions · No credit card required</p>
-              )}
-            </div>
-            <SampleFeedbackCard question="Why do you want to work in healthcare?" />
-          </div>
-          <StatsRow />
-        </div>
-      </section>
-
-      {/* Programs */}
-      <section id="programs" className="scroll-mt-16 border-t bg-gray-50">
-        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-          <SectionHeading
-            title="Choose your program"
-            subtitle="Each program has its own question bank and tailored feedback."
-          />
-          <div className="mx-auto mt-10 grid max-w-5xl gap-6 md:grid-cols-2">
-            {live.map((p) => (
-              <Link
-                key={p.slug}
-                to={`/${p.slug}`}
-                className="group rounded-2xl border bg-white p-6 transition hover:border-gray-300 hover:shadow-md"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-teal-50">
-                    <ProgramIcon slug={p.slug} className="h-6 w-6 text-teal-600" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900">{p.displayName}</h3>
-                </div>
-                <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-gray-900">
-                  Get started <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
-                </span>
+      <section className="mx-auto max-w-6xl px-4 pb-16 pt-14 sm:px-6 md:pt-20">
+        <div className="grid items-center gap-14 lg:grid-cols-[1.05fr_1fr]">
+          <div>
+            <HandNote>built by a UCSF dental student</HandNote>
+            <h1 className="mt-4 text-balance text-[44px] font-medium leading-[1.05] tracking-tight text-gray-900 sm:text-[58px]">
+              Practice the interview. Then watch yourself back.
+            </h1>
+            <p className="mt-5 max-w-xl text-lg leading-relaxed text-gray-600">
+              Answer dental and medical school interview questions on camera. Watch your recording, read the
+              feedback, and try again.{!user && ` Your first ${FREE_TRIAL_SESSIONS} sessions are free.`}
+            </p>
+            <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3">
+              <Link to={start.to} className={buttonVariants({ size: 'lg' })}>
+                {start.label} <ArrowRight className="h-4 w-4" />
               </Link>
-            ))}
-          </div>
-
-          {soon.length > 0 && (
-            <div className="mx-auto mt-6 grid max-w-5xl gap-4 sm:grid-cols-3">
-              {soon.map((p) => (
-                <Link
-                  key={p.slug}
-                  to={`/${p.slug}`}
-                  className="rounded-2xl border border-dashed bg-white/60 p-5 transition hover:border-gray-400 hover:bg-white"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <ProgramIcon slug={p.slug} className="h-5 w-5 text-gray-500" />
-                    <Badge variant="secondary">Coming soon</Badge>
-                  </div>
-                  <p className="mt-3 text-sm font-medium text-gray-900">{p.displayName}</p>
-                  <p className="mt-1 text-sm text-gray-600">Get notified when it opens →</p>
-                </Link>
-              ))}
+              <a href="#programs" className="font-semibold text-gray-900 underline decoration-line decoration-2 underline-offset-4 hover:decoration-brand">
+                Pick your program
+              </a>
             </div>
-          )}
+            <ProgramPills className="mt-10" />
+          </div>
+          <HeroClip />
+        </div>
+        <HowItWorksLine className="mt-16" />
+        <StatsRow />
+      </section>
+
+      <section id="programs" className="scroll-mt-16 border-t border-line bg-white">
+        <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
+          <SectionHeading title="Pick your program" subtitle="Each one has its own questions, interview formats, and tips." />
+          <div className="mt-10">
+            <ProgramBlocks user={user} />
+          </div>
         </div>
       </section>
 
-      <FeaturesSection audience={`${liveNames} school`} />
-      <HowItWorksSection />
-      <FounderSection />
+      <StudentQuotes quotes={moreQuotes} />
+      <FounderLetter />
+      <FaqSection items={COMMON_FAQS} />
       <CtaSection
         title="Try it free"
         body={`Your first ${FREE_TRIAL_SESSIONS} practice sessions are free. After that, get 12 months of access for ${formatPrice(PLANS.year.amount)}, one-time, with no subscription.`}
-        to="/pricing"
-        label="See pricing"
+        to={start.to}
+        label={start.label}
       />
     </div>
   );
