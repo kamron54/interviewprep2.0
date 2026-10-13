@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { auth, db } from '../../firebase';
-import { doc, runTransaction, arrayUnion, collection, addDoc } from 'firebase/firestore';
+import { doc, runTransaction, arrayUnion, collection, addDoc, increment, serverTimestamp, updateDoc } from 'firebase/firestore';
 
 // Existing app utilities
 import { transcribeAudio, getFeedback } from '../ai/aiService';
@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { cn } from '@/lib/utils';
 import FeedbackDetails, { ScoreBadge } from '../components/FeedbackDetails';
+import { sessionOutcome } from '../lib/sessionOutcome';
 
 // Icons
 import {
@@ -238,6 +239,36 @@ useEffect(() => {
   }).catch(console.error);
 }, [overallAvg, sessionId, results.length, isReadonly]);
 
+  // Save what happened in this session on the account (`lastSession`), scored or not, so the admin
+  // Users table can explain sessions without a score. Separate writes, so the stats above never
+  // depend on them. Each only writes once per session (sessionId).
+  const outcomeStarted = useRef(false);
+  useEffect(() => {
+    const uid = auth.currentUser?.uid;
+    if (isReadonly || !sessionId || !uid || !answersToAnalyze || outcomeStarted.current) return;
+    outcomeStarted.current = true;
+    const userRef = doc(db, 'users', uid);
+    runTransaction(db, async (tx) => {
+      if ((await tx.get(userRef)).data()?.lastSession?.id === sessionId) return;
+      tx.update(userRef, { lastSession: { id: sessionId, at: serverTimestamp(), answers: answersToAnalyze, status: 'analyzing' } });
+    }).catch((err) => console.warn('Could not save session progress:', err));
+  }, [isReadonly, sessionId, answersToAnalyze]);
+
+  useEffect(() => {
+    const uid = auth.currentUser?.uid;
+    if (isReadonly || !sessionId || !uid || results.length === 0) return;
+    const outcome = sessionOutcome(results, scoredItems.length);
+    const userRef = doc(db, 'users', uid);
+    runTransaction(db, async (tx) => {
+      const last = (await tx.get(userRef)).data()?.lastSession;
+      if (last?.id === sessionId && last.status !== 'analyzing') return; // already saved
+      tx.update(userRef, {
+        lastSession: { id: sessionId, at: serverTimestamp(), ...outcome },
+        ...(outcome.scored === 0 && outcome.answers > 0 ? { unscoredSessions: increment(1) } : {}),
+      });
+    }).catch((err) => console.warn('Could not save session outcome:', err));
+  }, [isReadonly, sessionId, results, scoredItems.length]);
+
   // Copy transcript helper
   const copyTranscript = async (text) => {
     try {
@@ -293,6 +324,11 @@ useEffect(() => {
 
       const limited = all.find((r) => r.limitReached);
       if (limited) {
+        const uid = auth.currentUser?.uid;
+        if (uid && sessionId) {
+          updateDoc(doc(db, 'users', uid), { 'lastSession.status': 'usage-limit' })
+            .catch((err) => console.warn('Could not save session outcome:', err));
+        }
         toast.error(
           limited.limitError ||
             "We’ve noticed unusually heavy usage on your account. To ensure fair access for all users, we’ve temporarily paused usage. If you believe this is a mistake, please contact support.",
@@ -309,7 +345,7 @@ useEffect(() => {
     return () => {
       cancelled = true;
     };
-  }, [recordings, profession, navigate, isReadonly]);
+  }, [recordings, profession, navigate, isReadonly, sessionId]);
 
   // Read-only hydration: convert saved items to the shape used by the UI
   useEffect(() => {

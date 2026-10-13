@@ -49,14 +49,20 @@ export default async function handler(req, res) {
     let data;
     try {
       data = JSON.parse(text);
-      await userRef.update({
-        usageCount: admin.firestore.FieldValue.increment(1)
-      });
     } catch (parseErr) {
       console.error('🛑 Whisper API returned non-JSON:', text);
       return res
         .status(500)
         .json({ error: 'Unexpected response from Whisper API' });
+    }
+
+    // Count only answers that were actually transcribed ("Answers" in the admin Users table)
+    if (openaiRes.ok && typeof data.text === 'string') {
+      await userRef.update({
+        usageCount: admin.firestore.FieldValue.increment(1)
+      });
+    } else {
+      console.error('🛑 Transcription failed:', openaiRes.status, data?.error?.message || data);
     }
 
     // 4. Forward status + parsed JSON
