@@ -8,7 +8,7 @@ export const FREE_TRIAL_SESSIONS = 2;
 export const FREE_TRIAL_DAYS = 7;
 
 export const PLANS = {
-  month: { id: 'month', name: '1 Month', amount: 39, days: 30, stripePriceId: 'price_1ULGemHtr4snLcWRPNLjta9x' },
+  month: { id: 'month', name: '1 Month', amount: 29, days: 30, stripePriceId: 'price_1UQ92PHtr4snLcWRFB9IhyaF' },
   year: { id: 'year', name: '12 Months', amount: 49, days: 365, stripePriceId: 'price_1ULGgNHtr4snLcWRLvef42cn' },
 };
 
