@@ -120,7 +120,7 @@ export default function PrivacyPolicy() {
         </ul>
         <p>
           To exercise these rights, contact us at{' '}
-          <a className="text-blue-600 underline" href="mailto:kam.interviewprep@gmail.com">
+          <a className="text-teal-700 underline" href="mailto:kam.interviewprep@gmail.com">
             kam.interviewprep@gmail.com
           </a>
           .
@@ -143,7 +143,7 @@ export default function PrivacyPolicy() {
           <strong>InterviewPrep</strong>
           <br />
           Email:{' '}
-          <a className="text-blue-600 underline" href="mailto:kam.interviewprep@gmail.com">
+          <a className="text-teal-700 underline" href="mailto:kam.interviewprep@gmail.com">
             kam.interviewprep@gmail.com
           </a>
         </address>

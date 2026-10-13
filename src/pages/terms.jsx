@@ -114,7 +114,7 @@ export default function TermsOfService() {
           <strong>InterviewPrep</strong>
           <br />
           Email:{" "}
-          <a className="text-blue-600 underline" href="mailto:kam.interviewprep@gmail.com">
+          <a className="text-teal-700 underline" href="mailto:kam.interviewprep@gmail.com">
             kam.interviewprep@gmail.com
           </a>
         </address>

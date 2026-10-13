@@ -19,7 +19,7 @@ function AdminDashboard() {
 function Breakdown({ title, rows }) {
   return (
     <Card className="p-5">
-      <h2 className="text-sm font-semibold text-gray-900">{title}</h2>
+      <h2 className="font-sans text-sm font-semibold text-gray-900">{title}</h2>
       <dl className="mt-3 space-y-2 text-sm">
         {rows.map(([label, value]) => (
           <div key={label} className="flex items-center justify-between gap-4">
@@ -114,7 +114,7 @@ function Overview() {
 
       {/* Waitlist signups: which program students want next */}
       <Card className="p-5">
-        <h2 className="text-sm font-semibold text-gray-900">Waitlist</h2>
+        <h2 className="font-sans text-sm font-semibold text-gray-900">Waitlist</h2>
         {waitlist === null ? (
           <p className="mt-2 text-sm text-muted-foreground">Loading waitlist…</p>
         ) : (

@@ -94,7 +94,7 @@ function FeedbackLab() {
           {feedback ? (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h2 className="text-base font-semibold">Result</h2>
+                <h2 className="font-sans text-base font-semibold">Result</h2>
                 <ScoreBadge score={feedback.overallScore} />
               </div>
               <FeedbackDetails feedback={feedback} />

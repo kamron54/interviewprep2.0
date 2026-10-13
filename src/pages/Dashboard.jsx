@@ -146,7 +146,7 @@ export default function Dashboard() {
   const kpis = [
     { label: 'Sessions Completed',  value: sessionsCompleted,  Icon: Trophy,  color: 'text-primary' },
     { label: 'Questions Practiced', value: questionsPracticed, Icon: BookOpen, color: 'text-teal-600' },
-    { label: 'Average Score',       value: averageScore == null ? '—' : `${averageScore}%`, Icon: Target, color: 'text-blue-600' },
+    { label: 'Average Score',       value: averageScore == null ? '—' : `${averageScore}%`, Icon: Target, color: 'text-teal-600' },
   ];
 
   if (!isVerified) {

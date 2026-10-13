@@ -1,5 +1,4 @@
 import { Card } from '@/components/ui/card';
-import { Sparkles } from 'lucide-react';
 import FeedbackDetails, { ScoreBadge } from './FeedbackDetails';
 
 // Static example for the homepage and program-page heroes. Uses the same FeedbackDetails as the
@@ -19,10 +18,7 @@ export default function SampleFeedbackCard({ question = 'Why do you want to beco
       {/* Laid out like an answer on the session summary */}
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            <Sparkles className="h-3.5 w-3.5 text-teal-600" aria-hidden="true" />
-            Sample feedback
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sample feedback</p>
           <p className="mt-1 text-base font-semibold text-gray-900">{question}</p>
         </div>
         <div className="shrink-0"><ScoreBadge score={SAMPLE_FEEDBACK.overallScore} /></div>

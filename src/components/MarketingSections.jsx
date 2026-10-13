@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ListChecks, Video, Sparkles, SlidersHorizontal, TrendingUp, Lock, ArrowRight } from 'lucide-react';
+import { ListChecks, Video, MessageSquareText, SlidersHorizontal, TrendingUp, Lock, ArrowRight } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
 import { PLANS, FREE_TRIAL_SESSIONS, formatPrice } from '../lib/pricing';
 
@@ -47,7 +47,7 @@ export function FeaturesSection({ audience }) {
   const features = [
     { Icon: ListChecks, title: 'Profession-Specific Questions', body: `Curated questions for ${audience} interviews, including the “Big 3” you’re almost guaranteed to be asked.` },
     { Icon: Video, title: 'Video Practice Sessions', body: 'Record yourself answering on camera and play it back to check your delivery and body language.' },
-    { Icon: Sparkles, title: 'Instant Feedback', body: 'Every answer is transcribed and scored on impression, clarity, and content, with specific suggestions to improve.' },
+    { Icon: MessageSquareText, title: 'Instant Feedback', body: 'Every answer is transcribed and scored on impression, clarity, and content, with specific suggestions to improve.' },
     { Icon: SlidersHorizontal, title: 'Customizable Sessions', body: 'Choose video or audio, set the number of questions, or build your own set from the question bank.' },
     { Icon: TrendingUp, title: 'Progress Tracking', body: 'Save your sessions and watch your average score change as you practice.' },
     { Icon: Lock, title: 'Private by Default', body: 'Your recordings aren’t stored on our servers. You only keep what you choose to save.' },

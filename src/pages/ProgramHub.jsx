@@ -22,7 +22,6 @@ export default function ProgramHub() {
     <div>
       {/* Hero */}
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(60%_60%_at_50%_0%,rgba(13,148,136,0.15),transparent)]" />
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 md:py-20 lg:px-8">
           <div className="grid items-center gap-12 md:grid-cols-2">
             <div>

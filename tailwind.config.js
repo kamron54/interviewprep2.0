@@ -12,14 +12,50 @@ export default {
   			md: 'calc(var(--radius) - 2px)',
   			sm: 'calc(var(--radius) - 4px)'
   		},
-  		// Redesign tokens (founder-led and warm). The values live in CSS variables, so a theme
-  		// can be scoped to one page (the direction mockup) before it becomes the site-wide look.
+  		// The look: navy ink on warm paper, Fraunces headlines, evergreen accent (src/index.css)
   		fontFamily: {
-  			display: ['var(--font-display)', 'Georgia', 'serif'],
-  			body: ['"Source Sans 3 Variable"', 'system-ui', 'sans-serif'],
+  			sans: ['"Source Sans 3 Variable"', 'ui-sans-serif', 'system-ui', 'sans-serif', '"Apple Color Emoji"', '"Segoe UI Emoji"'],
+  			display: ['"Fraunces Variable"', 'Georgia', 'serif'],
   			hand: ['"Caveat Variable"', 'cursive'],
   		},
+  		// Shadows tinted with the ink color instead of black
+  		boxShadow: {
+  			sm: '0 1px 2px 0 rgb(20 35 60 / 0.06)',
+  			DEFAULT: '0 1px 3px 0 rgb(20 35 60 / 0.08), 0 1px 2px -1px rgb(20 35 60 / 0.06)',
+  			md: '0 4px 6px -1px rgb(20 35 60 / 0.08), 0 2px 4px -2px rgb(20 35 60 / 0.06)',
+  			lg: '0 10px 24px -6px rgb(20 35 60 / 0.14), 0 4px 8px -4px rgb(20 35 60 / 0.06)',
+  			xl: '0 20px 32px -8px rgb(20 35 60 / 0.16), 0 8px 12px -6px rgb(20 35 60 / 0.06)',
+  		},
   		colors: {
+  			// Every gray-* class on the site: warm paper tones for backgrounds and borders (50–300),
+  			// navy ink tones for text (400–950)
+  			gray: {
+  				50: '#F3EEE5',
+  				100: '#ECE5D9',
+  				200: '#E6DFD3',
+  				300: '#D4CABA',
+  				400: '#9298A0',
+  				500: '#626B7A',
+  				600: '#4B5667',
+  				700: '#344155',
+  				800: '#223047',
+  				900: '#14233C',
+  				950: '#0C1628',
+  			},
+  			// Every teal-* class on the site becomes the evergreen accent (600 is the brand color)
+  			teal: {
+  				50: '#EEF5F2',
+  				100: '#D7E9E3',
+  				200: '#B0D3C8',
+  				300: '#82B8A9',
+  				400: '#4F9886',
+  				500: '#2C7D6C',
+  				600: '#1E6B5C',
+  				700: '#185A4D',
+  				800: '#14493F',
+  				900: '#103B33',
+  				950: '#08221D',
+  			},
   			ink: 'rgb(var(--ink) / <alpha-value>)',
   			paper: 'rgb(var(--paper) / <alpha-value>)',
   			surface: 'rgb(var(--surface) / <alpha-value>)',
