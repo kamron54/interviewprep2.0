@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import AuthLayout from '../components/AuthLayout';
 import FormMessage from '../components/FormMessage';
 import GoogleSignInButton, { OrDivider } from '../components/GoogleSignInButton';
+import { QuoteCard } from '../components/MarketingSections';
 import { createProfile, friendlyAuthError, rememberedProgram, rememberProgram, sendVerificationEmail } from '../lib/auth';
 import { FREE_TRIAL_SESSIONS } from '../lib/pricing';
 import { getProgram, livePrograms } from '../professions/index.js';
@@ -50,11 +51,15 @@ function SignUp() {
     navigate(profile?.role === 'admin' ? '/admin' : '/dashboard', { replace: true });
   };
 
+  // A real student's words for the chosen program, when there is one
+  const quote = getProgram(track)?.landing.quotes?.[0];
+
   return (
     <AuthLayout
       title="Create your account"
       subtitle={`Start with ${FREE_TRIAL_SESSIONS} free practice sessions. No credit card required.`}
       footer={<>Already have an account? <Link to="/login" className="font-medium text-foreground hover:underline">Log in</Link></>}
+      aside={quote && <QuoteCard quote={quote} className="px-2 text-center [&_blockquote]:text-lg" />}
     >
       <form onSubmit={handleSignUp} className="space-y-4">
         <div className="space-y-1.5">

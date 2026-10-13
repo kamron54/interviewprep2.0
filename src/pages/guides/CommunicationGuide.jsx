@@ -8,7 +8,7 @@ export default function CommunicationGuide() {
 
   return (
     <GuideShell
-      title="STAR / SPIKES Communication"
+      title="STAR and SPIKES for communication"
       subtitle="Structure answers clearly and deliver difficult messages with empathy."
     >
       <h2>Why communication wins interviews</h2>

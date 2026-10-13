@@ -270,12 +270,15 @@ export function StudentQuotes({ quotes, title = 'What students say' }) {
   );
 }
 
-// More of Kamron's story, in his own words, once he's written it (one string per paragraph)
+// More of Kamron's story, in his own words, once he's written it (one string per paragraph).
+// The About page shows all of it; the homepage keeps the short version and links there.
 const FOUNDER_STORY = [];
 
-export function FounderLetter() {
+// page: the About page's version (the heading is the page's h1, and the full story is included)
+export function FounderLetter({ page = false }) {
+  const Heading = page ? 'h1' : 'h2';
   return (
-    <section id="founder" className="border-t border-line">
+    <section id="founder" className={cn(!page && 'border-t border-line')}>
       <div className="mx-auto grid max-w-6xl items-start gap-12 px-4 py-24 sm:px-6 md:grid-cols-[280px_1fr]">
         <figure className="mx-auto w-56 rotate-[-2deg] bg-white p-3 pb-2 shadow-lg md:mx-0 md:w-full">
           <img src="/images/kamron.jpg" alt="Kamron in UCSF School of Dentistry scrubs" loading="lazy" className="aspect-square w-full object-cover" />
@@ -283,9 +286,9 @@ export function FounderLetter() {
         </figure>
         <div className="max-w-2xl">
           <HandNote>a note from me</HandNote>
-          <h2 className="mt-3 text-balance text-[34px] font-medium leading-tight tracking-tight text-gray-900 sm:text-[40px]">
+          <Heading className="mt-3 text-balance text-[34px] font-medium leading-tight tracking-tight text-gray-900 sm:text-[40px]">
             I know how nerve-racking these interviews feel. I’ve sat in that chair.
-          </h2>
+          </Heading>
           <div className="mt-6 space-y-4 text-lg leading-relaxed text-gray-700">
             <p>
               Hi, I’m Kamron. I’m a student at UCSF School of Dentistry. When I applied, I interviewed at several
@@ -295,8 +298,11 @@ export function FounderLetter() {
               I built InterviewPrep to be the tool I wish I’d had: practice that feels like the real thing, and a way
               to watch yourself back. That’s where the real improvement happens.
             </p>
-            {FOUNDER_STORY.map((p) => <p key={p}>{p}</p>)}
+            {page && FOUNDER_STORY.map((p) => <p key={p}>{p}</p>)}
           </div>
+          {!page && FOUNDER_STORY.length > 0 && (
+            <Link to="/about" className={cn(linkCls, 'mt-6 inline-block')}>Read the rest of my story</Link>
+          )}
           <p className="mt-8 font-hand text-[44px] leading-none text-gray-900">Kamron</p>
           <p className="mt-1 text-sm text-gray-500">
             UCSF School of Dentistry ·{' '}

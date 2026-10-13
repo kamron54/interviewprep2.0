@@ -8,7 +8,7 @@ export default function PitfallsGuide() {
 
   return (
     <GuideShell
-      title="Common Pitfalls & How to Avoid Them"
+      title="Common pitfalls and how to avoid them"
       subtitle="Avoid traps that derail otherwise strong interviews."
     >
       <h2>Frequent general pitfalls</h2>
