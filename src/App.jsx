@@ -7,6 +7,7 @@ import ProgramHub from './pages/ProgramHub';
 import ProgramLanding from './pages/ProgramLanding';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
+import RedesignPreview from './pages/RedesignPreview';
 import VerifyEmail from './pages/VerifyEmail';
 import Survey from './pages/Survey';
 import Dashboard from './pages/Dashboard';
@@ -59,6 +60,8 @@ function AppRoutes() {
       {/* Global auth */}
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<SignUp />} />
+      {/* Redesign direction mockup (stage 0): preview branch only, not linked anywhere */}
+      <Route path="/redesign-preview" element={<RedesignPreview />} />
 
       <Route element={<Layout />}>
         {/* Public */}

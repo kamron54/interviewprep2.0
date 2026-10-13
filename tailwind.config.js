@@ -12,7 +12,19 @@ export default {
   			md: 'calc(var(--radius) - 2px)',
   			sm: 'calc(var(--radius) - 4px)'
   		},
+  		// Redesign tokens (founder-led and warm). The values live in CSS variables, so a theme
+  		// can be scoped to one page (the direction mockup) before it becomes the site-wide look.
+  		fontFamily: {
+  			display: ['var(--font-display)', 'Georgia', 'serif'],
+  			body: ['"Source Sans 3 Variable"', 'system-ui', 'sans-serif'],
+  			hand: ['"Caveat Variable"', 'cursive'],
+  		},
   		colors: {
+  			ink: 'rgb(var(--ink) / <alpha-value>)',
+  			paper: 'rgb(var(--paper) / <alpha-value>)',
+  			surface: 'rgb(var(--surface) / <alpha-value>)',
+  			line: 'rgb(var(--line) / <alpha-value>)',
+  			brand: 'rgb(var(--brand) / <alpha-value>)',
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
   			card: {
