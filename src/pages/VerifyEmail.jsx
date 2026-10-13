@@ -44,7 +44,7 @@ export default function VerifyEmail() {
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
           <Icon className="h-6 w-6 text-primary" />
         </div>
-        <h1 className="mt-4 text-xl font-semibold text-foreground">
+        <h1 className="mt-4 text-2xl font-medium tracking-tight text-foreground">
           {done ? 'Your email is confirmed' : 'This link didn’t work'}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">

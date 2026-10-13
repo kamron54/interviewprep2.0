@@ -7,7 +7,7 @@ export default function TermsOfService() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
       <header className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900">Terms of Service</h1>
+        <h1 className="text-[40px] font-medium leading-tight tracking-tight text-gray-900">Terms of Service</h1>
         <p className="mt-2 text-sm text-gray-600">Effective Date: {EFFECTIVE_DATE}</p>
       </header>
 
@@ -114,7 +114,7 @@ export default function TermsOfService() {
           <strong>InterviewPrep</strong>
           <br />
           Email:{" "}
-          <a className="text-blue-600 underline" href="mailto:kam.interviewprep@gmail.com">
+          <a className="text-teal-700 underline" href="mailto:kam.interviewprep@gmail.com">
             kam.interviewprep@gmail.com
           </a>
         </address>

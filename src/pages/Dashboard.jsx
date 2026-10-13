@@ -19,7 +19,7 @@ import { getAccessState } from '../lib/access';
 import { FREE_TRIAL_SESSIONS } from '../lib/pricing';
 import { getProgram, livePrograms } from '../professions/index.js';
 import usePageTitle from '../lib/usePageTitle';
-import { Trophy, BookOpen, Target, Play, Star, AlertTriangle, Crown, Gift, BarChart3, MailCheck } from "lucide-react";
+import { Lock, MailCheck, Play } from "lucide-react";
 
 export default function Dashboard() {
   usePageTitle('Dashboard');
@@ -144,9 +144,9 @@ export default function Dashboard() {
                     : null;
 
   const kpis = [
-    { label: 'Sessions Completed',  value: sessionsCompleted,  Icon: Trophy,  color: 'text-primary' },
-    { label: 'Questions Practiced', value: questionsPracticed, Icon: BookOpen, color: 'text-teal-600' },
-    { label: 'Average Score',       value: averageScore == null ? '—' : `${averageScore}%`, Icon: Target, color: 'text-blue-600' },
+    { label: 'Sessions completed',  value: sessionsCompleted },
+    { label: 'Questions practiced', value: questionsPracticed },
+    { label: 'Average score',       value: averageScore == null ? '—' : `${averageScore}%` },
   ];
 
   if (!isVerified) {
@@ -156,7 +156,7 @@ export default function Dashboard() {
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
             <MailCheck className="h-6 w-6 text-primary" />
           </div>
-          <h1 className="mt-4 text-xl font-semibold text-foreground">Verify your email</h1>
+          <h1 className="mt-4 text-2xl font-medium tracking-tight text-foreground">Verify your email</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             We sent a verification link to <span className="font-medium text-foreground">{auth.currentUser?.email}</span>.
             Click it, then come back here.
@@ -175,239 +175,133 @@ export default function Dashboard() {
     );
   }
 
-  // ---- state pill content (icon + label) ---------------------------------
-  const statePill = (() => {
-    switch (userState) {
-      case 'free_trial_active':
-        return { text: `Free Trial`, Icon: Star, color: 'text-amber-700', bg: 'bg-warning/10', border: 'border-warning/30' };
-      case 'free_trial_expired':
-        return { text: 'Trial Expired', Icon: AlertTriangle, color: 'text-destructive', bg: 'bg-destructive/10', border: 'border-destructive/20' };
-      case 'paid_active':
-        return { text: `Premium${paidDaysRemaining != null ? ` (${paidDaysRemaining} days left)` : ''}`, Icon: Crown, color: 'text-primary', bg: 'bg-primary/10', border: 'border-primary/20' };
-      case 'paid_cancelled':
-        return { text: 'Access Ended', Icon: Gift, color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200' };
-      default:
-        return { text: 'Free Trial', Icon: Star, color: 'text-amber-700', bg: 'bg-warning/10', border: 'border-warning/30' };
-    }
-  })();
+  // ---- where the account stands: a pill by the Start button, and a bar under the sessions ----
+  // The colored dot echoes the logo's recording light
+  const STATES = {
+    free_trial_active: { text: 'Free trial', dot: 'bg-amber-500' },
+    free_trial_expired: { text: 'Trial ended', dot: 'bg-red-500' },
+    paid_active: { text: `Premium${paidDaysRemaining != null ? ` · ${paidDaysRemaining} days left` : ''}`, dot: 'bg-brand' },
+    paid_cancelled: { text: 'Access ended', dot: 'bg-gray-400' },
+  };
+  const statePill = STATES[userState] || STATES.free_trial_active;
+
+  const statusBar = {
+    free_trial_active: trialSessionsLeft === 0
+      ? { text: `You’ve used your ${FREE_TRIAL_SESSIONS} free sessions. Upgrade to keep practicing.`, action: 'Upgrade' }
+      : { text: `${trialSessionsLeft} free session${trialSessionsLeft === 1 ? '' : 's'} left · trial ends in ${trialDaysLabel}`, action: 'Upgrade' },
+    free_trial_expired: { text: 'Your free trial has ended.', action: 'Upgrade' },
+    paid_cancelled: { text: 'Your access has ended.', action: 'See plans' },
+    paid_active: {
+      text: paidDaysRemaining != null ? `Premium is active · ${paidDaysRemaining} days left` : 'Premium is active',
+      action: paidDaysRemaining != null && paidDaysRemaining <= 7 ? 'Extend access' : null,
+    },
+  }[userState];
+
+  const subtitle = userState === 'paid_cancelled' ? 'Your access has ended. Choose a plan to keep practicing.'
+    : locked ? 'Upgrade to keep practicing.'
+    : sessionsCompleted === 0 ? 'Ready for your first practice session?'
+    : 'Pick up where you left off.';
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-0 pb-10">
-      {/* Header (clean; no alerts inside) */}
-      <header className="border-b border-border bg-card">
-        <div className="container mx-auto px-0 md:px-4 py-6">
-          {/* Main header row */}
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-foreground">
-                {userData && userData.name ? ('Welcome, ' + userData.name) : 'Welcome'}
-              </h1>
-              <p className="mt-2 text-muted-foreground">
-                {userState === 'free_trial_expired'
-                  ? 'Upgrade to continue your interview preparation journey.'
-                  : userState === 'paid_cancelled'
-                  ? 'Your access has ended. Choose a plan to keep practicing.'
-                  : 'Continue your interview preparation journey.'}
-              </p>
-              <p className="mt-2 inline-flex items-center gap-1.5 text-sm text-muted-foreground">
-                <ProgramIcon slug={track} className="h-4 w-4 text-teal-600" />
-                Practicing for <span className="font-medium text-foreground">{program.displayName}</span>
-                <span aria-hidden="true">·</span>
-                <button type="button" onClick={openProgramDialog} className="font-medium text-foreground underline-offset-4 hover:underline">
-                  Change
-                </button>
-              </p>
-            </div>
+    <div className="mx-auto max-w-6xl px-4 pb-16 sm:px-6">
+      <header className="flex flex-col gap-6 border-b border-line pb-8 pt-10 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h1 className="text-[34px] font-medium leading-tight tracking-tight text-gray-900 sm:text-[40px]">
+            {userData.name ? `Welcome, ${userData.name}` : 'Welcome'}
+          </h1>
+          <p className="mt-2 text-gray-600">{subtitle}</p>
+          <p className="mt-3 inline-flex items-center gap-1.5 text-sm text-gray-500">
+            <ProgramIcon slug={track} className="h-4 w-4 text-brand" />
+            Practicing for <span className="font-medium text-gray-900">{program.displayName}</span>
+            <span aria-hidden="true">·</span>
+            <button type="button" onClick={openProgramDialog} className="font-medium text-gray-900 underline decoration-line decoration-2 underline-offset-4 hover:decoration-brand">
+              Change
+            </button>
+          </p>
+        </div>
 
-            <div className="flex items-center space-x-4">
-              {/* State pill next to Start */}
-              <span className={`hidden sm:inline-flex items-center gap-2 rounded-full border px-3 py-1 ${statePill.bg} ${statePill.border}`}>
-                <statePill.Icon className={`h-4 w-4 ${statePill.color}`} />
-                <span className={`text-sm font-medium ${statePill.color}`}>{statePill.text}</span>
-              </span>
-
-              {/* Start button — sends locked users to checkout instead of dead-ending */}
-              <Button onClick={() => (locked ? handleUpgrade() : navigate('/setup'))}>
-                {locked ? <Crown className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                {locked ? 'Upgrade to Practice' : 'Start Practice'}
-              </Button>
-            </div>
-          </div>
+        <div className="flex items-center gap-3">
+          <span className="hidden items-center gap-2 rounded-full border border-line bg-white px-3 py-1 text-sm font-medium text-gray-700 sm:inline-flex">
+            <span className={cn('h-2 w-2 rounded-full', statePill.dot)} aria-hidden="true" />
+            {statePill.text}
+          </span>
+          {/* Sends locked users to pricing instead of dead-ending */}
+          <Button size="lg" className="px-6" onClick={() => (locked ? handleUpgrade() : navigate('/setup'))}>
+            {!locked && <Play className="h-4 w-4" />}
+            {locked ? 'Upgrade to practice' : 'Start practicing'}
+          </Button>
         </div>
       </header>
 
-      {/* KPI cards */}
-      <section className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-3">
+      <section className="mt-8 grid grid-cols-3 divide-x divide-line rounded-2xl border border-line bg-white shadow-sm">
         {kpis.map((k) => (
-          <Card
-            key={k.label}
-            className="rounded-2xl border bg-card hover:shadow-md transition"
-          >
-            <div className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground tracking-wide">
-                    {k.label}
-                  </p>
-                  <p className="mt-2 text-3xl font-bold text-foreground">{k.value}</p>
-                </div>
-                {k.Icon && <k.Icon className={`h-8 w-8 ${k.color}`} />}
-              </div>
-            </div>
-          </Card>
+          <div key={k.label} className="flex flex-col justify-between px-4 py-5 sm:px-6">
+            <p className="text-sm text-gray-500">{k.label}</p>
+            <p className="mt-2 font-display text-[28px] font-medium leading-none text-gray-900 sm:text-[36px]">{k.value}</p>
+          </div>
         ))}
       </section>
 
-      {/* Recent practice sessions */}
-      <section className="mt-10">
-        <Card className="rounded-2xl border bg-card">
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-foreground">Recent Practice Sessions</h2>
+      <section className="mt-12">
+        <h2 className="text-[22px] font-medium tracking-tight text-gray-900">Recent practice sessions</h2>
+        <div className="mt-4 overflow-hidden rounded-2xl border border-line bg-white shadow-sm">
+          {locked ? (
+            <div className="flex flex-col items-center px-6 py-12 text-center">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-50">
+                <Lock className="h-5 w-5 text-gray-500" />
+              </span>
+              <h3 className="mt-3 font-semibold text-gray-900">{userState === 'paid_cancelled' ? 'Access ended' : 'Session history locked'}</h3>
+              <p className="mt-1 max-w-md text-sm text-gray-500">
+                {userState === 'paid_cancelled'
+                  ? 'Your access has ended. Choose a plan to see your saved sessions and keep practicing.'
+                  : 'Upgrade to keep practicing and see your saved sessions and scores.'}
+              </p>
             </div>
-
-            <div className="mt-4">
-              {locked ? (
-                <div className="flex flex-col items-center justify-center text-center border border-border rounded-xl bg-background p-10">
-                  <BarChart3 className="h-12 w-12 text-muted-foreground mb-3" />
-                  <h3 className="text-base font-semibold text-foreground">{userState === 'paid_cancelled' ? 'Access Ended' : 'Session History Locked'}</h3>
-                  <p className="mt-2 text-sm text-muted-foreground max-w-md">
-                    {userState === 'paid_cancelled'
-                      ? 'Your access has ended. Choose a plan to see your saved sessions and keep practicing.'
-                      : 'Upgrade to keep practicing and see your saved sessions and scores.'}
-                  </p>
-                </div>
-
-                ) : recentSessions.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center text-center border border-border rounded-xl bg-background p-10">
-                    <h3 className="text-base font-semibold text-foreground">No saved sessions yet</h3>
-                    <p className="mt-2 text-sm text-muted-foreground">Complete a practice and click “Save Session” on the summary screen.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {recentSessions.map((s) => (
-                      <div
-                        key={s.id}
-                        className="flex items-center justify-between rounded-xl border border-border bg-background p-4 hover:bg-muted/40 transition"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="inline-block h-2 w-2 rounded-full bg-foreground" aria-hidden />
-                          <div>
-                            <div className="font-medium text-foreground">{s.title || 'Untitled Session'}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {s.counts?.totalQuestions ?? 0} questions • {new Date(s.createdAt).toLocaleDateString()}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                          <Badge variant={(s.overallAvg ?? 0) >= 80 ? 'default' : 'secondary'}>{Math.round(s.overallAvg ?? 0)}%</Badge>
-                          <Button
-                            variant="outline"
-                            onClick={() => navigate('/summary', { state: { readonly: true, savedSession: s } })}
-                          >
-                            Review
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )
-              }
-            </div>
-          </div>
-        </Card>
-      </section>
-
-      {/* State-specific alerts near the bottom (not fixed) */}
-      <section className="mt-8 mb-8">
-        {userState === 'free_trial_expired' && (
-          <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <AlertTriangle className="h-5 w-5 text-destructive" />
-                <span className="font-medium text-destructive">Your free trial has expired</span>
-              </div>
-              <Button size="sm" className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleUpgrade}>
-                Upgrade Now
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {userState === 'paid_cancelled' && (
-          <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Gift className="h-5 w-5 text-orange-600" />
-                <span className="font-medium text-orange-800">Your access has ended</span>
-              </div>
-              <Button size="sm" className="bg-orange-600 text-white hover:bg-orange-700" onClick={handleUpgrade}>
-                See plans
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {userState === 'free_trial_active' && (
-          trialSessionsLeft === 0 ? (
-            <div className="p-3 bg-warning/10 border border-warning/20 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Star className="h-5 w-5 text-warning" />
-                  <span className="font-medium text-foreground">
-                    You’ve used your {FREE_TRIAL_SESSIONS} free sessions. Upgrade to continue.
-                  </span>
-                </div>
-                <Button
-                  size="sm"
-                  className="bg-warning text-warning-foreground hover:bg-warning/90"
-                  onClick={handleUpgrade}
-                >
-                  Upgrade Now
-                </Button>
-              </div>
+          ) : recentSessions.length === 0 ? (
+            <div className="px-6 py-12 text-center">
+              <h3 className="font-semibold text-gray-900">No saved sessions yet</h3>
+              <p className="mt-1 text-sm text-gray-500">Finish a practice session, then click “Save session” on the summary.</p>
             </div>
           ) : (
-            <div className="p-3 bg-warning/10 border border-warning/20 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Star className="h-5 w-5 text-warning" />
-                  <span className="font-medium text-foreground">
-                    {trialSessionsLeft} free session{trialSessionsLeft === 1 ? '' : 's'} left · trial ends in {trialDaysLabel}
-                  </span>
-                </div>
-                <Button
-                  size="sm"
-                  className="bg-warning text-warning-foreground hover:bg-warning/90"
-                  onClick={handleUpgrade}
-                >
-                  Upgrade Now
-                </Button>
-              </div>
-            </div>
-          )
-        )}
-
-        {userState === 'paid_active' && (
-          <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Crown className="h-5 w-5 text-primary" />
-                <span className="font-medium text-foreground">Premium Features Active</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-white px-3 py-1">
-                  <span className="text-xs text-primary">{paidDaysRemaining != null ? `${paidDaysRemaining} days remaining` : 'Active'}</span>
-                </div>
-                {paidDaysRemaining != null && paidDaysRemaining <= 7 && (
-                  <Button size="sm" variant="outline" onClick={handleUpgrade}>Extend access</Button>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
+            <ul className="divide-y divide-line">
+              {recentSessions.map((s) => (
+                <li key={s.id} className="flex items-center justify-between gap-4 px-5 py-4 sm:px-6">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-gray-900">{s.title || 'Untitled session'}</p>
+                    <p className="text-sm text-gray-500">
+                      {s.counts?.totalQuestions ?? 0} questions · {new Date(s.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-3">
+                    <Badge variant={(s.overallAvg ?? 0) >= 80 ? 'default' : 'secondary'}>{Math.round(s.overallAvg ?? 0)}%</Badge>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate('/summary', { state: { readonly: true, savedSession: s } })}
+                    >
+                      Review
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </section>
+
+      {statusBar && (
+        <section className="mt-8 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-white px-5 py-4 shadow-sm sm:px-6">
+          <p className="flex items-center gap-2.5 font-medium text-gray-900">
+            <span className={cn('h-2 w-2 shrink-0 rounded-full', statePill.dot)} aria-hidden="true" />
+            {statusBar.text}
+          </p>
+          {statusBar.action && (
+            <Button size="sm" variant={userState === 'paid_active' ? 'outline' : 'default'} onClick={handleUpgrade}>
+              {statusBar.action}
+            </Button>
+          )}
+        </section>
+      )}
 
       {/* Change program */}
       <AlertDialog open={programDialogOpen} onOpenChange={setProgramDialogOpen}>

@@ -1,42 +1,25 @@
+import { CtaSection, FounderLetter, StudentQuotes } from '../components/MarketingSections';
+import { livePrograms } from '../professions/index.js';
+import { useAccount } from '../lib/account';
+import { FREE_TRIAL_SESSIONS } from '../lib/pricing';
 import usePageTitle from '../lib/usePageTitle';
 
+// About: Kamron's letter (with his full story once he's written it) and what students say
 export default function About() {
   usePageTitle('About');
+  const { user } = useAccount();
+  const quotes = livePrograms().flatMap((p) => p.landing.quotes || []);
 
   return (
     <div>
-      {/* Hero */}
-      <section className="border-b bg-white">
-        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-          <h1 className="text-4xl font-semibold tracking-tight text-gray-900">About</h1>
-          <p className="mt-3 max-w-2xl text-lg text-gray-600">
-            The story behind InterviewPrep—and the person building it.
-          </p>
-        </div>
-      </section>
-
-      {/* Content */}
-      <section className="bg-gray-50">
-        <div className="mx-auto grid max-w-7xl grid-cols-1 items-start gap-10 px-4 py-16 sm:px-6 md:grid-cols-[auto,1fr] lg:px-8">
-          <img
-            src="/images/kamron-320.jpg"
-            alt="Kamron"
-            className="h-24 w-24 rounded-full object-cover ring-2 ring-white shadow md:h-28 md:w-28"
-          />
-
-          <div className="rounded-2xl border bg-white p-6">
-            <h2 className="text-base font-semibold text-gray-900">Hi, I’m Kamron</h2>
-            <div className="mt-3 space-y-4 text-sm leading-6 text-gray-700">
-              <p>
-                I'm currently a student at UCSF School of Dentistry. During my application process, I interviewed at several highly competitive programs and know firsthand how intimidating it can be. I built <strong>InterviewPrep</strong> because I wanted to create the tool I wish I'd had when I was applying.
-              </p>
-              <p className="text-xs text-gray-500">
-                If you ever want to chat or ask me any questions, you can reach me at <a className="underline" href="mailto:kam.interviewprep@gmail.com">kam.interviewprep@gmail.com</a>
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
+      <FounderLetter page />
+      <StudentQuotes quotes={quotes} />
+      <CtaSection
+        title="Try it free"
+        body={user ? 'Pick up where you left off.' : `Your first ${FREE_TRIAL_SESSIONS} practice sessions are free. No credit card needed.`}
+        to={user ? '/dashboard' : '/signup'}
+        label={user ? 'Go to your dashboard' : 'Start practicing free'}
+      />
     </div>
   );
 }

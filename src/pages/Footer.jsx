@@ -4,11 +4,11 @@ import { allPrograms } from '../professions/index.js';
 
 export default function Footer() {
   return (
-    <footer className="border-t bg-white">
-      <div className="mx-auto grid max-w-7xl grid-cols-2 gap-8 px-4 py-12 sm:px-6 md:grid-cols-5 lg:px-8">
+    <footer className="border-t border-line bg-white">
+      <div className="mx-auto grid max-w-6xl grid-cols-2 gap-8 px-4 py-12 sm:px-6 md:grid-cols-5">
         <div className="col-span-2">
           <Logo />
-          <p className="mt-3 max-w-xs text-sm text-gray-600">Mock interview practice for health professions school applicants, with instant feedback on every answer.</p>
+          <p className="mt-3 max-w-xs text-sm text-gray-600">Interview practice for dental and medical school, built by a UCSF dental student.</p>
         </div>
 
         <div>
@@ -42,8 +42,8 @@ export default function Footer() {
         </div>
       </div>
 
-      <div className="border-t">
-        <div className="mx-auto flex max-w-7xl items-center justify-center px-4 py-6 text-xs text-gray-500 sm:px-6 lg:px-8">
+      <div className="border-t border-line">
+        <div className="mx-auto flex max-w-6xl items-center justify-center px-4 py-6 text-xs text-gray-500 sm:px-6">
           <p>© {new Date().getFullYear()} InterviewPrep. All rights reserved.</p>
         </div>
       </div>

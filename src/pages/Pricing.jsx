@@ -4,11 +4,12 @@ import { toast } from 'sonner';
 import { Check } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { FaqSection } from '../components/MarketingSections';
+import { FaqSection, QuoteCard } from '../components/MarketingSections';
+import PageHeader from '../components/PageHeader';
 import { startCheckout } from '../lib/checkout';
 import { useAccount } from '../lib/account';
 import { PLANS, FREE_TRIAL_DAYS, FREE_TRIAL_SESSIONS, SURVEY_DISCOUNT, formatPrice } from '../lib/pricing';
-import { livePrograms } from '../professions/index.js';
+import { getProgram, livePrograms } from '../professions/index.js';
 import usePageTitle from '../lib/usePageTitle';
 
 export default function Pricing() {
@@ -33,6 +34,9 @@ export default function Pricing() {
       setRedirecting(null);
     }
   };
+
+  // A real student on why unlimited practice helped (dental.js quotes)
+  const quote = getProgram('dental')?.landing.quotes?.find((q) => q.name === 'Omar');
 
   const paidFeatures = [
     'Unlimited practice sessions',
@@ -89,29 +93,24 @@ export default function Pricing() {
 
   return (
     <div>
-      <section className="border-b bg-white">
-        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-          <h1 className="text-4xl font-semibold tracking-tight text-gray-900">Pricing</h1>
-          <p className="mt-3 max-w-2xl text-lg text-gray-600">Simple, student-friendly pricing. Try it free, then pay once. No subscriptions.</p>
-        </div>
-      </section>
+      <PageHeader title="Pricing" subtitle="Try it free, then pay once. No subscriptions." />
 
       <section className="bg-gray-50">
-        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
             {tiers.map((t) => {
               const ctaClass = cn(buttonVariants({ variant: t.highlight ? 'default' : 'outline', size: 'lg' }), 'w-full');
               return (
-                <div key={t.name} className={cn('relative flex flex-col rounded-2xl border bg-white p-6', t.highlight && 'ring-2 ring-gray-900')}>
+                <div key={t.name} className={cn('relative flex flex-col rounded-2xl border bg-white p-6', t.highlight && 'ring-2 ring-brand')}>
                   {t.badge && (
-                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gray-900 px-3 py-1 text-xs font-medium text-white">
+                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-brand px-3 py-1 text-xs font-semibold text-white">
                       {t.badge}
                     </span>
                   )}
-                  <h2 className="text-base font-semibold text-gray-900">{t.name}</h2>
+                  <h2 className="text-xl font-medium text-gray-900">{t.name}</h2>
                   <div className="mt-3 flex items-baseline gap-1.5">
                     {t.wasPrice && <span className="text-xl text-gray-400 line-through">{t.wasPrice}</span>}
-                    <span className="text-4xl font-semibold tracking-tight text-gray-900">{t.price}</span>
+                    <span className="font-display text-[44px] font-medium leading-none tracking-tight text-gray-900">{t.price}</span>
                     <span className="text-sm text-gray-500">{t.priceNote}</span>
                   </div>
                   <p className="mt-2 text-sm text-gray-600">{t.desc}</p>
@@ -142,11 +141,13 @@ export default function Pricing() {
             Both plans are one-time payments. Nothing renews, and you won’t be charged again.
           </p>
 
+          {quote && <QuoteCard quote={quote} className="mx-auto mt-14 max-w-2xl text-center" />}
+
           {/* Live coaching, separate from the practice plans */}
           <div className="mt-10 flex flex-col gap-4 rounded-2xl border bg-white p-6 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-base font-semibold text-gray-900">
-                1:1 Mock Interview <span className="ml-1 font-normal text-gray-500">· $75 per hour</span>
+              <h2 className="text-xl font-medium text-gray-900">
+                1:1 mock interview <span className="ml-1 font-sans text-base font-normal text-gray-500">· $75 per hour</span>
               </h2>
               <p className="mt-1 max-w-2xl text-sm text-gray-600">
                 A live 60-minute mock interview with a current dental student, with detailed notes, an action plan, and follow-up Q&amp;A by email.

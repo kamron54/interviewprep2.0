@@ -8,9 +8,25 @@ const dental = {
   status: 'live', // 'live' | 'soon'
   landing: {
     audience: 'dental school',
-    heroTitle: 'Nail Your Dental School Interviews.',
-    heroSubtitle: 'Practice with mock interviews designed specifically for your profession. Get instant, actionable feedback and build confidence for your big day.',
-    sampleQuestion: 'Why do you want to become a dentist?',
+    heroTitle: 'Practice your dental school interview before the real one.',
+    heroSubtitle: 'Answer the questions dental schools ask on camera, watch yourself back, and get feedback on every answer.',
+    // The program's block on the homepage (bootcamp.com-style)
+    block: {
+      overline: 'Dentistry',
+      tagline: 'The Big 3, ethics, and teamwork, practiced the way they come up on interview day.',
+      points: [
+        'Questions on ethics, teamwork, leadership, and communication',
+        'Video or audio, up to 3 minutes per answer',
+        'Feedback on every answer, plus your recording to watch back',
+      ],
+    },
+    // Real students, quoted with their permission (first name and school). Spelling fixed, words unchanged.
+    // The first one also appears in this program's homepage block.
+    quotes: [
+      { text: 'Every question I was asked in my interview cycle I had already practiced on InterviewPrep. It was super helpful to go in with no surprises!', name: 'Aline', school: 'Tufts University School of Dental Medicine' },
+      { text: 'I found the question randomization and watching my answer back to be super helpful in preparing me and helping me improve my interview skills.', name: 'Ryan', school: 'NYU College of Dentistry' },
+      { text: 'I improve best through repetition, and the program allowed me to practice by doing just that.', name: 'Omar', school: 'Penn Dental Medicine' },
+    ],
     credibility: 'founder', // full founder story; other programs get a short line or a reviewer
     reviewer: null, // { name, role, photo }: a real student who reviewed this program's questions
     formats: [

@@ -8,7 +8,7 @@ export default function EthicsGuide() {
 
   return (
     <GuideShell
-      title="Ethical Frameworks Cheat Sheet"
+      title="Ethical frameworks cheat sheet"
       subtitle="Apply consistent, patient-centered reasoning under pressure."
     >
       <h2>Why ethics matter in interviews</h2>

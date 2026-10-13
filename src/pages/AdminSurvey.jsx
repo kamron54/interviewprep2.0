@@ -60,7 +60,7 @@ function SurveyAdmin() {
       <Card className="p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-sm font-semibold text-gray-900">Survey emails</h2>
+            <h2 className="font-sans text-sm font-semibold text-gray-900">Survey emails</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               {survey.live
                 ? `Sending is on: up to ${survey.perRun} a day, around 9am Pacific.`
@@ -105,7 +105,7 @@ function SurveyAdmin() {
 
       <Card className="p-5">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold text-gray-900">Answers ({responses.length})</h2>
+          <h2 className="font-sans text-sm font-semibold text-gray-900">Answers ({responses.length})</h2>
           <Button variant="ghost" size="sm" onClick={reload}>Refresh</Button>
         </div>
 

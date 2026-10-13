@@ -105,7 +105,7 @@ export default function Survey() {
               <Gift className="h-6 w-6 text-teal-600" />
             </div>
           )}
-          <h1 className="text-xl font-semibold text-foreground">{content.title}</h1>
+          <h1 className="text-2xl font-medium tracking-tight text-foreground">{content.title}</h1>
           <p className="mt-2 text-sm text-muted-foreground">{content.body}</p>
           <Link
             to={to}
@@ -121,7 +121,7 @@ export default function Survey() {
 
   return (
     <div className="mx-auto max-w-xl px-4 py-12">
-      <h1 className="text-2xl font-semibold tracking-tight text-gray-900">A few quick questions</h1>
+      <h1 className="text-[30px] font-medium leading-tight tracking-tight text-gray-900">A few quick questions</h1>
       <p className="mt-2 text-sm text-muted-foreground">
         {view.firstName ? `Thanks for trying InterviewPrep, ${view.firstName}. ` : ''}
         It takes about a minute, and you’ll get ${SURVEY_DISCOUNT} off 12 months as a thank-you.
