@@ -122,7 +122,6 @@ export function HeroClip() {
       <div className="overflow-hidden rounded-xl border border-line bg-white shadow-lg">
         <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-3">
           <p className="text-sm font-semibold text-gray-900">Kamron, answering a practice question</p>
-          <span className="shrink-0 text-xs text-gray-500">no sound</span>
         </div>
         <div className="relative aspect-video bg-gray-900">
           <video
