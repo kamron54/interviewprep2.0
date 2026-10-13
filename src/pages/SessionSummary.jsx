@@ -21,12 +21,12 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { cn } from '@/lib/utils';
 import FeedbackDetails, { ScoreBadge } from '../components/FeedbackDetails';
+import FocusHeader from '../components/FocusHeader';
 import { sessionOutcome } from '../lib/sessionOutcome';
 
 // Icons
 import {
   ChevronDown,
-  ChevronLeft,
   AlertCircle,
   Bookmark,
   FileText,
@@ -139,7 +139,7 @@ function normalizeFeedback(raw) {
 }
 
 export default function SessionSummary() {
-  usePageTitle('Session Summary');
+  usePageTitle('Session summary');
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -447,62 +447,52 @@ useEffect(() => {
     : `${improvement > 0 ? '+' : '−'}${Math.abs(improvement)} from last session`;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Local page header (global Header is hidden on /summary) */}
-      <header className="border-b border-border bg-card">
-        <div className={cn('mx-auto flex flex-wrap items-center justify-between gap-2 px-4 py-3', pageWidth)}>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate('/dashboard')}
-            className="-ml-3 text-muted-foreground hover:text-foreground"
-          >
-            <ChevronLeft className="h-4 w-4" /> Dashboard
-          </Button>
-          <div className="flex items-center gap-2">
-            {results.length > 0 && !isReadonly && (
-              <AlertDialog open={saveOpen} onOpenChange={setSaveOpen}>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline">
-                    <Bookmark className="h-4 w-4" /> Save session
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Save this session to your dashboard?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will save your scores, transcripts, tips, and feedback.
-                      <br />
-                      <span className="font-medium">Recordings (audio/video) are not saved</span> to conserve storage.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Title</label>
-                    <Input
-                      placeholder="e.g., Behavioral practice — Sept 12"
-                      value={saveTitle}
-                      onChange={(e) => setSaveTitle(e.target.value)}
-                    />
-                  </div>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleSaveSession}>
-                      Save
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
-            <Button onClick={() => navigate('/setup')}>Start new session</Button>
-          </div>
+    <div className="min-h-screen bg-background">
+      {/* The site header is hidden on /summary */}
+      <FocusHeader className={pageWidth}>
+        <div className="flex items-center gap-2">
+          {results.length > 0 && !isReadonly && (
+            <AlertDialog open={saveOpen} onOpenChange={setSaveOpen}>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline">
+                  <Bookmark className="h-4 w-4" /> Save session
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Save this session to your dashboard?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will save your scores, transcripts, tips, and feedback.
+                    <br />
+                    <span className="font-medium">Recordings (audio/video) are not saved</span> to conserve storage.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Title</label>
+                  <Input
+                    placeholder="e.g., Behavioral practice — Sept 12"
+                    value={saveTitle}
+                    onChange={(e) => setSaveTitle(e.target.value)}
+                  />
+                </div>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleSaveSession}>
+                    Save
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+          <Button onClick={() => navigate('/setup')}>Start new session</Button>
         </div>
-      </header>
+      </FocusHeader>
 
-      <div className={cn('mx-auto px-4 py-8', pageWidth)}>
+      <div className={cn('mx-auto px-4 pb-16 pt-10 sm:px-6', pageWidth)}>
         {/* Summary strip */}
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
+            <h1 className="text-[30px] font-medium leading-tight tracking-tight text-gray-900">
               {isReadonly ? (saved?.title || 'Saved session') : 'Session complete'}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -516,8 +506,8 @@ useEffect(() => {
           {!isProcessing && results.length > 0 && (
             hasScore ? (
               <div className="text-right">
-                <div className="text-3xl font-semibold tracking-tight text-gray-900">{overallAvg}%</div>
-                <p className="text-xs text-muted-foreground">Overall</p>
+                <div className="font-display text-[40px] font-medium leading-none tracking-tight text-gray-900">{overallAvg}%</div>
+                <p className="mt-1 text-xs text-muted-foreground">Overall</p>
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">No answers were scored</p>

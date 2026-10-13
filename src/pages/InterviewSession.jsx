@@ -7,15 +7,15 @@ import { collection, getDocs, query, where } from 'firebase/firestore';
 
 // Lovable / shadcn-ui
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import FocusHeader from '../components/FocusHeader';
 import PageLoader from '../components/PageLoader';
 import usePageTitle from '../lib/usePageTitle';
-import { ChevronLeft, Clock, Mic, MicOff, SkipForward, CheckCircle2, Camera } from 'lucide-react';
+import { ChevronLeft, Clock, Mic, Square, SkipForward, CheckCircle2 } from 'lucide-react';
 
 export default function InterviewSession() {
-  usePageTitle('Practice Session');
+  usePageTitle('Practice session');
   const location = useLocation();
   const navigate = useNavigate();
   const { config = {} } = location.state || {};
@@ -112,7 +112,7 @@ export default function InterviewSession() {
           attach(s);
         } catch (err) {
           console.error('Stream request error:', err);
-          setStatus(err?.message || '⚠️ Unable to access microphone/camera.');
+          setStatus(err?.message || 'We couldn’t access your camera or microphone.');
         }
       })();
     }
@@ -199,7 +199,7 @@ export default function InterviewSession() {
       setIsRecording(true);
     } catch (err) {
       console.error(err);
-      setStatus(err?.message || 'Unable to access microphone/camera.');
+      setStatus(err?.message || 'We couldn’t access your camera or microphone.');
     }
   };
 
@@ -306,14 +306,14 @@ export default function InterviewSession() {
   if (!questions.length) {
     return (
       <div className="min-h-screen bg-background">
-        <header className="border-b border-border bg-card">
-          <div className="container mx-auto px-4 py-4">
-            <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
-              <ChevronLeft className="h-4 w-4 mr-2" /> Back
+        <header className="border-b border-line bg-white">
+          <div className="mx-auto flex min-h-14 max-w-6xl items-center px-4 py-2 sm:px-6">
+            <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="-ml-3 text-gray-500 hover:text-gray-900">
+              <ChevronLeft className="h-4 w-4" /> Back
             </Button>
           </div>
         </header>
-        <div className="container mx-auto px-4 py-10">
+        <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
           <PageLoader label="Loading questions…" />
         </div>
       </div>
@@ -322,55 +322,49 @@ export default function InterviewSession() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="lg" onClick={() => navigate('/dashboard')} className="text-muted-foreground hover:text-foreground">
-              <ChevronLeft className="h-4 w-4 mr-2" /> Back to Dashboard
-            </Button>
-            <Badge variant="outline">Question {questionIndex + 1} of {questions.length}</Badge>
-          </div>
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <Clock className="h-4 w-4" />
-            <span>{String(Math.floor(sessionElapsed / 60))}:{String(sessionElapsed % 60).padStart(2, '0')}</span>
-          </div>
+      <FocusHeader className="max-w-6xl">
+        <div className="flex items-center gap-2 text-sm tabular-nums text-gray-500">
+          <Clock className="h-4 w-4" aria-hidden="true" />
+          <span>{String(Math.floor(sessionElapsed / 60))}:{String(sessionElapsed % 60).padStart(2, '0')}</span>
         </div>
-      </header>
+      </FocusHeader>
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="mx-auto max-w-6xl px-4 pb-16 pt-8 sm:px-6">
         {/* Progress */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-lg font-medium">Session Progress</h2>
-            <span className="text-sm text-muted-foreground">{pct}% Complete</span>
+        <div className="mb-6">
+          <div className="mb-2 flex items-center justify-between text-sm">
+            <span className="font-medium text-gray-900">Question {questionIndex + 1} of {questions.length}</span>
+            <span className="text-gray-500">{pct}% complete</span>
           </div>
-          <Progress value={pct} className="h-2" />
+          <Progress value={pct} className="h-1.5" />
         </div>
 
         {/* Question */}
-        <Card className="mb-6">
-          <CardHeader><CardTitle className="text-xl">Question {questionIndex + 1}</CardTitle></CardHeader>
-          <CardContent><p className="text-lg text-foreground leading-relaxed">{questions[questionIndex].text}</p></CardContent>
+        <Card className="mb-6 rounded-2xl border-line shadow-sm">
+          <CardContent className="p-6 sm:p-8">
+            <h1 className="text-balance text-[24px] font-medium leading-snug tracking-tight text-gray-900 sm:text-[30px]">
+              {questions[questionIndex].text}
+            </h1>
+          </CardContent>
         </Card>
 
         {/* Media / Recording */}
-        <Card className="mb-6">
+        <Card className="mb-6 rounded-2xl border-line shadow-sm">
           <CardContent className="p-6">
             <div className="grid gap-6 md:grid-cols-2">
               {/* Left: ALWAYS-ON Preview (video mode) + Playback section */}
               <div className="space-y-4">
                 {isVideo && (!hasAnswer || isRecording) && (
                   <div className="space-y-2">
-                    <p className="text-sm font-medium">Camera Preview</p>
-                    <div className="w-full rounded-lg border bg-black/5">
+                    <p className="text-sm font-medium text-gray-700">Camera preview</p>
+                    <div className="w-full overflow-hidden rounded-lg border border-line bg-gray-50">
                       <div className="relative w-full" style={{ aspectRatio: config.videoAspectRatio || '16 / 9' }}>
                         <video
                           ref={videoRef}
                           autoPlay
                           muted
                           playsInline
-                          className="absolute inset-0 h-full w-full rounded object-cover"
+                          className="absolute inset-0 h-full w-full object-cover"
                           style={{ transform: 'scaleX(-1)' }}
                         />
                       </div>
@@ -380,12 +374,12 @@ export default function InterviewSession() {
 
                 {!isRecording && hasAnswer && (
                   <div className="space-y-2">
-                    <p className="text-sm font-medium">Your Answer</p>
+                    <p className="text-sm font-medium text-gray-700">Your answer</p>
                     {recordings[questionIndex].videoUrl ? (
-                      <div className="relative w-full" style={{ aspectRatio: config.videoAspectRatio || '16 / 9' }}>
+                      <div className="relative w-full overflow-hidden rounded-lg" style={{ aspectRatio: config.videoAspectRatio || '16 / 9' }}>
                         <video
                           controls
-                          className="absolute inset-0 h-full w-full rounded object-cover"
+                          className="absolute inset-0 h-full w-full object-cover"
                           src={recordings[questionIndex].videoUrl}
                           preload="metadata"
                           onLoadedMetadata={(e) => {
@@ -406,33 +400,33 @@ export default function InterviewSession() {
 
               {/* Right: Controls */}
               <div className="flex flex-col items-center justify-center gap-4 text-center">
-                {status && <p className="text-sm text-red-600 font-medium">{status}</p>}
+                {status && <p className="text-sm font-medium text-red-600">{status}</p>}
 
                 {!isRecording && !hasAnswer && (
                   <>
-                    <h3 className="text-lg font-medium">Ready to record your answer?</h3>
-                    <p className="text-muted-foreground">Take your time to think, then click record when ready.</p>
-                    <Button size="lg" className="w-24 h-24 rounded-full" onClick={startRecording}>
-                      <Mic className="h-8 w-8" />
+                    <h2 className="font-sans text-lg font-medium text-gray-900">Ready to record your answer?</h2>
+                    <p className="text-gray-500">Take your time to think, then click record when ready.</p>
+                    <Button size="lg" className="h-24 w-24 rounded-full [&_svg]:size-8" onClick={startRecording} aria-label="Start recording">
+                      <Mic />
                     </Button>
                   </>
                 )}
 
                 {isRecording && (
                   <>
-                    <h3 className="text-lg font-medium">Recording…</h3>
-                    <div className="flex items-center gap-2 text-sm text-red-500">
+                    <h2 className="font-sans text-lg font-medium text-gray-900">Recording…</h2>
+                    <div className="flex items-center gap-2 text-sm text-red-600">
                       <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-red-500" />
                       <span>Live</span>
                     </div>
-                    <Button size="lg" variant="destructive" className="w-24 h-24 rounded-full" onClick={stopRecording}>
-                      <MicOff className="h-8 w-8" />
+                    <Button size="lg" variant="destructive" className="h-24 w-24 rounded-full [&_svg]:size-7" onClick={stopRecording} aria-label="Stop recording">
+                      <Square className="fill-current" />
                     </Button>
                   </>
                 )}
 
                 {hasAnswer && !isRecording && (
-                  <p className="text-lg text-muted-foreground">Answer saved. Continue to the next question when ready.</p>
+                  <p className="text-lg text-gray-600">Answer saved. Continue to the next question when ready.</p>
                 )}
 
                 {timeLimitReached && (
@@ -448,18 +442,18 @@ export default function InterviewSession() {
           {/* Before recording: only Skip */}
           {!isRecording && !hasAnswer && (
             <Button variant="outline" onClick={handleSkip}>
-              <SkipForward className="mr-2 h-4 w-4" /> Skip
+              <SkipForward className="h-4 w-4" /> Skip
             </Button>
           )}
 
-          {/* After recording: only Next/Complete */}
+          {/* After recording: only Next/Finish */}
           {!isRecording && hasAnswer && (
             <Button onClick={() => handleNext()}>
               {questionIndex === questions.length - 1 ? (
                 <>
-                  <CheckCircle2 className="mr-2 h-4 w-4" /> Complete Session
+                  <CheckCircle2 className="h-4 w-4" /> Finish session
                 </>
-              ) : 'Next Question'}
+              ) : 'Next question'}
             </Button>
           )}
         </div>
@@ -467,3 +461,4 @@ export default function InterviewSession() {
     </div>
   );
 }
+

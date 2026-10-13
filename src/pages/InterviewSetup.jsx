@@ -6,22 +6,17 @@ import { db } from '../../firebase';
 // shadcn/ui
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { ChevronLeft } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import FocusHeader from '../components/FocusHeader';
 import usePageTitle from '../lib/usePageTitle';
 import { useAccount } from '../lib/account';
 
-function ChevronDown(props) {
-  return (
-    <svg {...props} viewBox="0 0 20 20" fill="currentColor">
-      <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 011.08 1.04l-4.25 4.25a.75.75 0 01-1.06 0L5.21 8.27a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-    </svg>
-  );
-}
+// A choice card for the interview type; the checked one gets a dark border
+const CHOICE = 'flex cursor-pointer items-start gap-3 rounded-xl border border-line p-4 transition-colors hover:bg-gray-50/60 has-[:checked]:border-gray-900';
+const FIELD_LABEL = 'block text-sm font-semibold text-gray-900';
 
 function InterviewSetup() {
-  usePageTitle('Interview Setup');
+  usePageTitle('Interview setup');
   const [interviewType, setInterviewType] = useState('random');
   const [mode, setMode] = useState('video');
   const [big3, setBig3] = useState(true);
@@ -66,140 +61,121 @@ function InterviewSetup() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header (matches Session & Summary) */}
-      <header className="border-b border-border bg-card">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="lg"
-              onClick={() => navigate('/dashboard')}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <ChevronLeft className="h-4 w-4 mr-2" /> Back to Dashboard
-            </Button>
-          </div>
-        </div>
-      </header>
-      <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-bold text-foreground">Interview Setup</h1>
-          <p className="text-sm text-muted-foreground">
+      <FocusHeader className="max-w-3xl" />
+
+      <div className="mx-auto max-w-3xl space-y-6 px-4 pb-16 pt-10 sm:px-6">
+        <div>
+          <h1 className="text-[34px] font-medium leading-tight tracking-tight text-gray-900 sm:text-[40px]">Set up your interview</h1>
+          <p className="mt-2 text-sm text-gray-500">
             Questions for {program.displayName} ·{' '}
-            <Link to="/dashboard" className="font-medium text-foreground underline-offset-4 hover:underline">Change program</Link>
+            <Link to="/dashboard" className="font-medium text-gray-900 underline decoration-line decoration-2 underline-offset-4 hover:decoration-brand">Change program</Link>
           </p>
         </div>
 
-        {/* Interview Type on its own */}
-        <Card className="border border-border">
-          <CardContent className="space-y-3 p-4">
-            <h2 className="text-base font-medium">Interview Type</h2>
-            <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-muted/50">
+        <Card className="rounded-2xl border-line shadow-sm">
+          <CardContent className="space-y-3 p-5 sm:p-6">
+            <h2 className="font-sans text-sm font-semibold text-gray-900">Interview type</h2>
+            <label className={CHOICE}>
               <input
                 type="radio"
                 name="interviewType"
                 value="random"
                 checked={interviewType === 'random'}
                 onChange={(e) => setInterviewType(e.target.value)}
-                className="accent-foreground"
+                className="mt-1 accent-foreground"
               />
               <div>
-                <p className="font-medium text-foreground">Standard</p>
-                <p className="text-xs text-muted-foreground">Questions are generated as you go for a realistic, interview-day experience.</p>
+                <p className="font-medium text-gray-900">Standard</p>
+                <p className="text-sm text-gray-500">Random questions from the bank, one at a time, like interview day.</p>
               </div>
             </label>
 
-            <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-muted/50">
+            <label className={CHOICE}>
               <input
                 type="radio"
                 name="interviewType"
                 value="custom"
                 checked={interviewType === 'custom'}
                 onChange={(e) => setInterviewType(e.target.value)}
-                className="accent-foreground"
+                className="mt-1 accent-foreground"
               />
               <div>
-                <p className="font-medium text-foreground">Custom</p>
-                <p className="text-xs text-muted-foreground">Choose or create specific questions to target areas you want to practice.</p>
+                <p className="font-medium text-gray-900">Custom</p>
+                <p className="text-sm text-gray-500">Pick questions from the bank or write your own.</p>
               </div>
             </label>
           </CardContent>
         </Card>
 
-        {/* Recording Mode and Big 3/Question Count side by side */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Recording Mode */}
-          <Card className="border border-border">
-            <CardContent className="space-y-2 p-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Recording Mode</label>
+        {/* Recording mode and question count side by side */}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Card className="rounded-2xl border-line shadow-sm">
+            <CardContent className="space-y-2 p-5 sm:p-6">
+              <label htmlFor="recording-mode" className={FIELD_LABEL}>Recording mode</label>
               <select
+                id="recording-mode"
                 value={mode}
                 onChange={(e) => setMode(e.target.value)}
-                className="w-full p-2 border rounded-lg"
+                className="h-10 w-full rounded-md border border-input bg-transparent px-3 text-base shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring md:text-sm"
               >
                 <option value="video">Video</option>
-                <option value="audio">Audio Only</option>
+                <option value="audio">Audio only</option>
               </select>
             </CardContent>
           </Card>
 
           {interviewType === 'random' && (
-            <Card className="border border-border">
-              <CardContent className="space-y-4 p-4">
-                {/* Question Count */}
-                <div className="space-y-2">
-                  <label className="text-sm text-foreground">Total Questions</label>
-                  <Input
-                    type="number"
-                    min="1"
-                    max="10"
-                    value={questionCount}
-                    onChange={(e) => setQuestionCount(Number(e.target.value))}
-                    onBlur={() => setQuestionCount((n) => Math.min(10, Math.max(1, Math.round(n) || 1)))}
-                  />
-                  <p className="text-xs text-muted-foreground">Between 1 and 10.</p>
-                </div>               
+            <Card className="rounded-2xl border-line shadow-sm">
+              <CardContent className="space-y-2 p-5 sm:p-6">
+                <label htmlFor="question-count" className={FIELD_LABEL}>Number of questions</label>
+                <Input
+                  id="question-count"
+                  type="number"
+                  min="1"
+                  max="10"
+                  className="h-10"
+                  value={questionCount}
+                  onChange={(e) => setQuestionCount(Number(e.target.value))}
+                  onBlur={() => setQuestionCount((n) => Math.min(10, Math.max(1, Math.round(n) || 1)))}
+                />
+                <p className="text-xs text-gray-500">Between 1 and 10.</p>
               </CardContent>
             </Card>
           )}
         </div>
 
-        {/* Include Big 3 */}
         {interviewType === 'random' && (
-              <div className="flex items-center gap-2">
-                <input
-                  id="big3"
-                  type="checkbox"
-                  checked={big3}
-                  onChange={(e) => setBig3(e.target.checked)}
-                  className="accent-foreground"
-                />
-                <label
-                  htmlFor="big3"
-                  className="relative inline-flex items-center gap-1 text-sm text-foreground leading-none"
-                >
-                  Include “Big 3” questions?
-                  <span className="text-muted-foreground cursor-pointer peer select-none" tabIndex={0}>ⓘ</span>
-                  <div className="absolute left-full ml-1 top-1/2 -translate-y-1/2 w-64 p-2 bg-card border border-border rounded shadow-md text-xs text-muted-foreground opacity-0 peer-hover:opacity-100 peer-focus:opacity-100 transition-opacity z-10 pointer-events-none">
-                    The "Big 3" are the three interview questions that are guaranteed to show up in every interview: Tell me about yourself, Why this profession, and Why our school.
-                  </div>
-                </label>
-              </div>
-      )}
+          <label htmlFor="big3" className="flex cursor-pointer items-start gap-3">
+            <input
+              id="big3"
+              type="checkbox"
+              checked={big3}
+              onChange={(e) => setBig3(e.target.checked)}
+              className="mt-1 accent-foreground"
+            />
+            <span>
+              <span className="block text-sm font-medium text-gray-900">Include the “Big 3” questions</span>
+              <span className="block text-sm text-gray-500">
+                Tell me about yourself, why this profession, and why our school. They come up in almost every interview.
+              </span>
+            </span>
+          </label>
+        )}
 
-        {/* Custom Builder */}
         {interviewType === 'custom' && (
-          <Card className="border border-border">
-            <CardContent className="space-y-3 p-4">
-              <h2 className="text-base font-medium">Custom Interview Builder</h2>
+          <Card className="rounded-2xl border-line shadow-sm">
+            <CardContent className="space-y-5 p-5 sm:p-6">
+              <h2 className="font-sans text-sm font-semibold text-gray-900">Build your own interview</h2>
               <div className="flex gap-2">
                 <Input
                   type="text"
+                  className="h-10"
                   value={customInput}
                   onChange={(e) => setCustomInput(e.target.value)}
-                  placeholder="Type a custom question..."
+                  placeholder="Type your own question…"
                 />
                 <Button
+                  className="h-10"
                   onClick={() => {
                     if (customInput.trim()) {
                       setCustomQuestions([...customQuestions, { text: customInput.trim() }]);
@@ -212,16 +188,16 @@ function InterviewSetup() {
               </div>
 
               {customQuestions.length > 0 && (
-                <div className="mt-2 space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">Questions:</p>
-                  <ul className="space-y-1">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Your questions</p>
+                  <ol className="mt-2 space-y-1.5">
                     {customQuestions.map((q, index) => (
-                      <li key={index} className="flex justify-between items-center rounded-md border border-border bg-card px-3 py-2 text-sm">
-                        <span className="text-foreground">{q.text}</span>
+                      <li key={index} className="flex items-center justify-between gap-3 rounded-lg border border-line bg-white py-1.5 pl-3 pr-1 text-sm">
+                        <span className="text-gray-900">{q.text}</span>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-destructive hover:text-destructive"
+                          className="shrink-0 text-gray-500 hover:text-gray-900"
                           onClick={() => {
                             const updated = [...customQuestions];
                             updated.splice(index, 1);
@@ -232,20 +208,20 @@ function InterviewSetup() {
                         </Button>
                       </li>
                     ))}
-                  </ul>
+                  </ol>
                 </div>
               )}
 
-              <div className="mt-2">
-                <p className="text-sm font-semibold text-foreground mb-2">Browse Question Bank</p>
-                <div className="max-h-64 overflow-y-auto border border-border rounded-lg p-2 space-y-2 bg-background">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Add from the question bank</p>
+                <ul className="mt-2 max-h-64 divide-y divide-line overflow-y-auto rounded-lg border border-line bg-background">
                   {visibleBank.map((q) => (
-                    <div key={q.id} className="flex justify-between items-center border-b border-border/60 pb-2">
-                      <span className="text-sm text-foreground/90">{q.text}</span>
+                    <li key={q.id} className="flex items-center justify-between gap-3 py-1 pl-3 pr-1">
+                      <span className="text-sm text-gray-800">{q.text}</span>
                       <Button
                         variant="link"
                         size="sm"
-                        className="text-primary"
+                        className="shrink-0 text-primary"
                         onClick={() => {
                           if (!customQuestions.some((item) => item.text === q.text)) {
                             setCustomQuestions([...customQuestions, { text: q.text }]);
@@ -254,15 +230,14 @@ function InterviewSetup() {
                       >
                         Add
                       </Button>
-                    </div>
+                    </li>
                   ))}
-                </div>
+                </ul>
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Start Button */}
         <div className="space-y-2">
           <Button
             variant="default"
@@ -271,10 +246,10 @@ function InterviewSetup() {
             disabled={!profileLoaded || (interviewType === 'custom' && customQuestions.length === 0)}
             className="w-full"
           >
-            Start Interview
+            Start interview
           </Button>
           {interviewType === 'custom' && customQuestions.length === 0 && (
-            <p className="text-center text-xs text-muted-foreground">Add at least one question to start.</p>
+            <p className="text-center text-xs text-gray-500">Add at least one question to start.</p>
           )}
         </div>
       </div>
